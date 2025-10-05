@@ -3,3 +3,4 @@ from .storage import Storage, ScraperInfo, RunInfo, FilesystemStorage, MinioStor
 from .settings import ScraperSettings
 from .models.user import User
 from .utils import generate_run_id
+from .errors import ParsingError
