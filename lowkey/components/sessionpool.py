@@ -128,7 +128,7 @@ class SessionPool(OriginalSessionPool):
                 user_agent=session.user_data.get("user_agent", ""),
                 fingerprint=session.user_data.get("fingerprint", {}),
                 cookies=session.user_data.get("cookies", {})
-                | {cookie.name: cookie.value for cookie in session.cookies},
+                | {cookie["name"]: cookie["value"] for cookie in session.cookies},
                 user_data={
                     k: v
                     for k, v in session.user_data.items()
