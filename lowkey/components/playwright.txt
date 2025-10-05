@@ -1,0 +1,91 @@
+from typing import Mapping, Any, override
+from browserforge.fingerprints import Fingerprint
+from browserforge.injectors.playwright import AsyncNewContext
+from crawlee.browsers import PlaywrightBrowserPlugin, PlaywrightBrowserController
+from crawlee.browsers._playwright_browser import PlaywrightPersistentBrowser
+from crawlee.browsers._types import BrowserType
+from crawlee.fingerprint_suite import FingerprintGenerator, HeaderGenerator
+from crawlee.proxy_configuration import ProxyInfo
+from crawlee._utils.context import ensure_context
+from playwright.async_api import Browser, BrowserContext
+from pathlib import Path
+
+
+class NewPlaywrightBrowserController(PlaywrightBrowserController):
+    _DEFAULT_HEADER_GENERATOR = HeaderGenerator()
+
+    def __init__(
+        self,
+        browser: Browser | PlaywrightPersistentBrowser,
+        *,
+        max_open_pages_per_browser: int = 20,
+        use_incognito_pages: bool = False,
+        header_generator: HeaderGenerator | None = _DEFAULT_HEADER_GENERATOR,
+        fingerprint_generator: FingerprintGenerator | None = None,
+        fingerprint_mapping: Mapping[str, Fingerprint] | None = None,
+    ) -> None:
+        super().__init__(
+            browser=browser,
+            max_open_pages_per_browser=max_open_pages_per_browser,
+            use_incognito_pages=use_incognito_pages,
+            header_generator=header_generator,
+            fingerprint_generator=fingerprint_generator,
+        )
+        self.fingerprint_mapping = fingerprint_mapping or {}
+
+    def get_fingerprint(self, session_id: str) -> Fingerprint:
+        """Get the fingerprint for the browser controller."""
+        return self.fingerprint_mapping.get(
+            session_id, self._fingerprint_generator.generate()
+        )
+
+    @override
+    async def _create_browser_context(
+        self,
+        browser_new_context_options: Mapping[str, Any] | None = None,
+        proxy_info: ProxyInfo | None = None,
+    ) -> BrowserContext:
+        return await AsyncNewContext(
+            browser=self._browser,
+            fingerprint=self.get_fingerprint(proxy_info.session_id),
+            **browser_new_context_options,
+        )
+
+
+class NewBrowserPlugin(PlaywrightBrowserPlugin):
+    def __init__(
+        self,
+        *,
+        browser_type: BrowserType = "chromium",
+        user_data_dir: str | Path | None = None,
+        browser_launch_options: dict[str, Any] | None = None,
+        browser_new_context_options: dict[str, Any] | None = None,
+        max_open_pages_per_browser: int = 20,
+        use_incognito_pages: bool = False,
+        fingerprint_generator: FingerprintGenerator | None = None,
+        fingerprint_mapping: Mapping[str, Fingerprint] | None = None,
+    ) -> None:
+        super().__init__(
+            browser_type=browser_type,
+            user_data_dir=user_data_dir,
+            browser_launch_options=browser_launch_options,
+            browser_new_context_options=browser_new_context_options,
+            max_open_pages_per_browser=max_open_pages_per_browser,
+            use_incognito_pages=use_incognito_pages,
+            fingerprint_generator=fingerprint_generator,
+        )
+        self.fingerprint_mapping = fingerprint_mapping or {}
+
+    @ensure_context
+    @override
+    async def new_browser(self) -> PlaywrightBrowserController:
+        controller = await super().new_browser()
+        new_controller = NewPlaywrightBrowserController(
+            controller._browser,
+            use_incognito_pages=self._use_incognito_pages,
+            max_open_pages_per_browser=self._max_open_pages_per_browser,
+            fingerprint_generator=self._fingerprint_generator,
+            fingerprint_mapping=self.fingerprint_mapping,
+        )
+
+        return new_controller
