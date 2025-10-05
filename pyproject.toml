@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lowkey"
-version = "0.0.2"
+version = "0.0.3"
 description = ""
 authors = ["draew6"]
 packages = [{ include = "lowkey" }]
@@ -11,11 +11,11 @@ python = ">=3.13"
 fastapi = {extras = ["standard"], version = "<1.0"}
 pydantic = ">=2.11,<3.0.0"
 pydantic-settings = ">=2.0,<3.0"
-crawlee = "0.6.12"
+crawlee = {version = "1.0.0", extras = ["httpx"]}
 curlify2 = ">=2.0.0,<3.0.0"
 zstandard = ">=0.25.0,<1.0.0"
 miniopy_async = ">=1.23.4,<2.0.0"
-
+fastlet = { git = "https://github.com/draew6/fastlet.git" }
 
 [build-system]
 requires = ["poetry-core"]
