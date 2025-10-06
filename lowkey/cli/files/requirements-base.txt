@@ -1,3 +1,4 @@
+git+https://github.com/draew6/lowkey.git
 playwright
 bs4
 lxml
