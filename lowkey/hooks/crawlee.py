@@ -17,7 +17,7 @@ async def save_raw_html(
     """Saves the raw HTML response to storage."""
     url = context.request.url
     identifier_value = identifier_value_fn(url)
-    body = context.http_response.read()
+    body = await context.http_response.read()
     cctx = zstd.ZstdCompressor(level=10)  # TODO: možno potestovať čo sa oplati
     compressed_body = cctx.compress(body)
     await storage.bronze.save("response.body.zst", identifier_value, compressed_body)
