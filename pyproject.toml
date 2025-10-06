@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lowkey"
-version = "0.0.3"
+version = "0.0.4"
 description = ""
 authors = ["draew6"]
 packages = [{ include = "lowkey" }]
@@ -20,3 +20,6 @@ fastlet = { git = "https://github.com/draew6/fastlet.git" }
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+fastlet = "lowkey.cli.run:main"
