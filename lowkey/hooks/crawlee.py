@@ -80,3 +80,17 @@ async def save_cookies(
             **context.session.user_data.get("cookies", {}),
             **cookies,
         }
+
+@after_handler
+async def save_user_info(
+    storage: ScraperStorage,
+    identifier_value_fn: Callable[[str], str],
+    context: ParsedHttpCrawlingContext,
+):
+    proxy = context.session.user_data.get("proxy_url")
+    user = {
+        "proxy": proxy,
+    }
+    user_file = json.dumps(user).encode("utf-8")
+    identifier_value = identifier_value_fn(context.request.url)
+    await storage.bronze.save("user.json", identifier_value, user_file)
