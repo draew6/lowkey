@@ -88,8 +88,10 @@ async def save_user_info(
     context: ParsedHttpCrawlingContext,
 ):
     proxy = context.session.user_data.get("proxy_url")
+    user_id = context.session.id.replace("session-", "")
     user = {
         "proxy": proxy,
+        "user_id": user_id,
     }
     user_file = json.dumps(user).encode("utf-8")
     identifier_value = identifier_value_fn(context.request.url)
