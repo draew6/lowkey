@@ -10,6 +10,7 @@ class HttpxHttpClient(OriginalHttpxHttpClient):
     def _get_client(self, proxy_url: str | None) -> httpx.AsyncClient:
         client: httpx.AsyncClient = super()._get_client(proxy_url)
         client.event_hooks = self.event_hooks
+        client._timeout = httpx.Timeout(timeout=10.0)
         return client
 
     def add_hooks(self, request_hooks=None, response_hooks=None):
