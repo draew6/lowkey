@@ -8,6 +8,7 @@ def get_scraper_settings():
     settings = Settings()
     return settings
 
+
 def get_storage():
     settings = get_scraper_settings()
     storage = MinioStorage(
@@ -17,6 +18,7 @@ def get_storage():
         settings.minio_bucket_name,
     )
     return storage
+
 
 Storage = Annotated[MinioStorage, Depends(get_storage)]
 ScraperSettings = Annotated[Settings, Depends(get_scraper_settings)]

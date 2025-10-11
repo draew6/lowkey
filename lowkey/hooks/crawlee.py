@@ -81,6 +81,7 @@ async def save_cookies(
             **cookies,
         }
 
+
 @after_handler
 async def save_user_info(
     storage: ScraperStorage,

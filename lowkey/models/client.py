@@ -24,6 +24,8 @@ class UserClient(Client, Protocol):
 
     async def save_user_data(self, users: list) -> None: ...
 
+    async def create_activities(self, activities: list, run_id: str) -> dict: ...
+
 
 class APIClient(Protocol):
     @property
