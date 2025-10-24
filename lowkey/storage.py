@@ -266,7 +266,7 @@ class Layer(ABC):
         cls, project_name: str, scraper_name: str, storage: Storage
     ) -> list[str]:
         key = cls._create_scraper_path(project_name, scraper_name)
-        files = await storage.list_files(key, pattern="run=*/_STARTED")
+        files = await storage.list_files(key, pattern="*_STARTED")
         run_ids = []
         for file in files:
             run_id = file.split("run=")[1].split("/")[0]

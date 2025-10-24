@@ -170,7 +170,13 @@ class Parser:
                     batch_raw_data = []
                 except Exception as e:
                     await run_parser.silver.mark_run_as_failed()
+                    await parser.bronze.storage.close()
+                    await parser.silver.storage.close()
+                    await run_parser.bronze.storage.close()
+                    await run_parser.silver.storage.close()
                     raise e
+            await parser.bronze.storage.close()
+            await parser.silver.storage.close()
         await run_parser.silver.mark_run_as_completed()
         await run_parser.bronze.storage.close()
         await run_parser.silver.storage.close()
