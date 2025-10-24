@@ -66,9 +66,11 @@ class Parser:
             results.extend(parsed_data)
         return results
 
-    async def save(self, data: Data, batch_size: int = 10000):
+    async def save(
+        self, data: Data, batch_size: int = 10000, outer_index: int = 0
+    ) -> int:
         if not data:
-            return
+            return outer_index
         number_of_rows = len(data)
         number_of_batches = math.ceil(number_of_rows / batch_size)
         for i in range(number_of_batches):
@@ -79,8 +81,9 @@ class Parser:
             df = pd.DataFrame(rows)
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
-            file_name = f"{i:06d}.parquet"
+            file_name = f"{i + outer_index:06d}.parquet"
             await self.silver.save(file_name, buf.getvalue())
+        return number_of_batches + outer_index
 
     @classmethod
     async def run(
@@ -115,3 +118,59 @@ class Parser:
         await parser.silver.mark_run_as_completed()
         await parser.bronze.storage.close()
         await parser.silver.storage.close()
+
+    @classmethod
+    async def full_run(
+        cls,
+        project_name: str,
+        scraper_name: str,
+        identifier: str,
+        handler: Callable[[RawFile], Data],
+        run_info: RunInfo,
+        input_storage: Storage,
+        output_storage: Storage = None,
+        batch_size: int = 10000,
+    ):
+        RUN_ID = "sadasdasd"
+        run_parser = cls(
+            project_name,
+            scraper_name,
+            RUN_ID,
+            identifier,
+            handler,
+            input_storage,
+            output_storage or input_storage,
+        )
+        await run_parser.silver.mark_run_as_started()
+        await run_parser.silver.create_run_info(run_info)
+        run_ids = await BronzeLayer.list_run_ids(
+            project_name, scraper_name, input_storage
+        )
+        batch_raw_data = []
+        file_index = 0
+        for index, run_id in enumerate(run_ids):
+            parser = cls(
+                project_name,
+                scraper_name,
+                run_id,
+                identifier,
+                handler,
+                input_storage,
+                output_storage or input_storage,
+            )
+
+            raw_data = await parser.load_input_files()
+            batch_raw_data.extend(raw_data)
+            if len(batch_raw_data) >= batch_size or index == len(run_ids) - 1:
+                try:
+                    parsed_data = await run_parser.parse(batch_raw_data)
+                    file_index = await run_parser.save(
+                        parsed_data, batch_size, file_index
+                    )
+                    batch_raw_data = []
+                except Exception as e:
+                    await run_parser.silver.mark_run_as_failed()
+                    raise e
+        await run_parser.silver.mark_run_as_completed()
+        await run_parser.bronze.storage.close()
+        await run_parser.silver.storage.close()
