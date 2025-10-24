@@ -88,9 +88,6 @@ async def save_user_info(
     identifier_value_fn: Callable[[str], str],
     context: ParsedHttpCrawlingContext,
 ):
-    identifier_value = identifier_value_fn(context.request.url)
-    if not identifier_value:
-        return
     proxy = context.session.user_data.get("proxy_url")
     user_id = context.session.id.replace("session-", "")
     user = {
@@ -98,4 +95,5 @@ async def save_user_info(
         "user_id": user_id,
     }
     user_file = json.dumps(user).encode("utf-8")
+    identifier_value = identifier_value_fn(context.request.url)
     await storage.bronze.save("user.json", identifier_value, user_file)
