@@ -47,9 +47,9 @@ class Parser:
             return hint
         raise ValueError("Unsupported handler input type")
 
-    async def load_input_files(self) -> RawData:
+    async def load_input_files(self, key: str) -> RawData:
         input_type = self.detect_file_type()
-        files = await self.bronze.load_run_files("*.zst")
+        files = await self.bronze.storage.load_files(key, "*.zst")
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [dctx.decompress(file.content) for file in files]
         if input_type is HTMLFile:
@@ -58,6 +58,9 @@ class Parser:
             return [json.loads(file.decode("utf-8")) for file in decompressed_files]
         else:
             raise ValueError("Unsupported handler input type")
+
+    async def load_run_input_files(self):
+        return await self.load_input_files(self.bronze.files_path)
 
     async def parse(self, raw_data: RawData) -> Data:
         results = []
@@ -96,6 +99,7 @@ class Parser:
         run_info: RunInfo,
         input_storage: Storage,
         output_storage: Storage = None,
+        full_run: bool = False,
     ):
         parser = cls(
             project_name,
@@ -108,7 +112,12 @@ class Parser:
         )
         await parser.silver.mark_run_as_started()
         await parser.silver.create_run_info(run_info)
-        raw_data = await parser.load_input_files()
+        if full_run:
+            raw_data = await parser.load_input_files(
+                BronzeLayer._create_scraper_path(project_name, scraper_name)
+            )
+        else:
+            raw_data = await parser.load_run_input_files()
         try:
             parsed_data = await parser.parse(raw_data)
             await parser.save(parsed_data)
@@ -118,65 +127,3 @@ class Parser:
         await parser.silver.mark_run_as_completed()
         await parser.bronze.storage.close()
         await parser.silver.storage.close()
-
-    @classmethod
-    async def full_run(
-        cls,
-        project_name: str,
-        scraper_name: str,
-        run_id: str,
-        identifier: str,
-        handler: Callable[[RawFile], Data],
-        run_info: RunInfo,
-        input_storage: Storage,
-        output_storage: Storage = None,
-        batch_size: int = 10000,
-    ):
-        run_parser = cls(
-            project_name,
-            scraper_name,
-            run_id,
-            identifier,
-            handler,
-            input_storage,
-            output_storage or input_storage,
-        )
-        await run_parser.silver.mark_run_as_started()
-        await run_parser.silver.create_run_info(run_info)
-        run_ids = await BronzeLayer.list_run_ids(
-            project_name, scraper_name, input_storage
-        )
-        batch_raw_data = []
-        file_index = 0
-        for index, r_id in enumerate(run_ids):
-            parser = cls(
-                project_name,
-                scraper_name,
-                r_id,
-                identifier,
-                handler,
-                input_storage,
-                output_storage or input_storage,
-            )
-
-            raw_data = await parser.load_input_files()
-            batch_raw_data.extend(raw_data)
-            if len(batch_raw_data) >= batch_size or index == len(run_ids) - 1:
-                try:
-                    parsed_data = await run_parser.parse(batch_raw_data)
-                    file_index = await run_parser.save(
-                        parsed_data, batch_size, file_index
-                    )
-                    batch_raw_data = []
-                except Exception as e:
-                    await run_parser.silver.mark_run_as_failed()
-                    await parser.bronze.storage.close()
-                    await parser.silver.storage.close()
-                    await run_parser.bronze.storage.close()
-                    await run_parser.silver.storage.close()
-                    raise e
-            await parser.bronze.storage.close()
-            await parser.silver.storage.close()
-        await run_parser.silver.mark_run_as_completed()
-        await run_parser.bronze.storage.close()
-        await run_parser.silver.storage.close()
