@@ -35,6 +35,9 @@ class Storage(ABC):
     @abstractmethod
     async def close(self) -> None: ...
 
+    @abstractmethod
+    async def list_files(self, key: str, pattern: str) -> list[str]: ...
+
 
 class FilesystemStorage(Storage):
     def __init__(self, base_path: str) -> None:
@@ -47,10 +50,13 @@ class FilesystemStorage(Storage):
         with open(path, "wb") as f:
             f.write(value)
 
-    async def load_files(self, key: str, pattern: str = "*") -> list[File]:
+    async def list_files(self, key: str, pattern: str) -> list[str]:
         path = os.path.join(self.base_path, key, pattern)
         files = glob.glob(path)
+        return files
 
+    async def load_files(self, key: str, pattern: str = "*") -> list[File]:
+        files = await self.list_files(key, pattern)
         data: list[File] = []
         for file in files:
             with open(file, "rb") as f:
@@ -82,12 +88,20 @@ class MinioStorage(Storage):
             length=len(value),
         )
 
-    async def load_files(self, key: str, pattern: str = "*") -> list[File]:
+    async def list_files(self, key: str, pattern: str) -> list[str]:
         objects = self.client.list_objects(
             bucket_name=self.bucket_name, prefix=key, recursive=True
         )
         prefix = key.lstrip("/")
+        names = []
+        async for obj in objects:
+            name = obj.object_name
+            rel = name[len(prefix) :].lstrip("/")
+            if fnmatch.fnmatch(rel, pattern):
+                names.append(name)
+        return names
 
+    async def load_files(self, key: str, pattern: str = "*") -> list[File]:
         async def get_one_file(object_name: str) -> File:
             async with await self.client.get_object(
                 self.bucket_name, object_name
@@ -95,12 +109,8 @@ class MinioStorage(Storage):
                 content = await resp.read()
             return File(name=object_name, content=content)
 
-        tasks = []
-        async for obj in objects:
-            name = obj.object_name
-            rel = name[len(prefix) :].lstrip("/")
-            if fnmatch.fnmatch(rel, pattern):
-                tasks.append(get_one_file(name))
+        files = await self.list_files(key, pattern)
+        tasks = [get_one_file(file) for file in files]
 
         if not tasks:
             return []
@@ -198,6 +208,14 @@ class Layer(ABC):
         self.run_id = run_id
         self.run_date = datetime.now(UTC)
 
+    @staticmethod
+    @abstractmethod
+    def _create_scraper_path(project_name: str, scraper_name: str) -> str: ...
+
+    def _scraper_path(self) -> str:
+        return self._create_scraper_path(self.project_name, self.scraper_name)
+
+    @property
     @abstractmethod
     def _run_path(self) -> str: ...
 
@@ -242,6 +260,18 @@ class Layer(ABC):
     async def load_run_files(self, pattern: str) -> list[File]:
         return await self.storage.load_files(self.files_path, pattern)
 
+    @classmethod
+    async def list_run_ids(
+        cls, project_name: str, scraper_name: str, storage: Storage
+    ) -> list[str]:
+        key = cls._create_scraper_path(project_name, scraper_name)
+        files = await storage.list_files(key, pattern="run=*/_STARTED")
+        run_ids = []
+        for file in files:
+            run_id = file.split("run=")[1].split("/")[0]
+            run_ids.append(run_id)
+        return run_ids
+
 
 class BronzeLayer(Layer):
     """
@@ -278,10 +308,14 @@ class BronzeLayer(Layer):
         super().__init__(storage, project_name, scraper_name, run_id)
         self.identifier = identifier
 
+    @staticmethod
+    def _create_scraper_path(project_name: str, scraper_name: str) -> str:
+        return f"bronze/{project_name}/{scraper_name}"
+
     @property
     def _run_path(self):
         # return f"bronze/{self.project_name}/{self.scraper_name}/{datetime.now(UTC).strftime('%Y/%m/%d')}/run={self.run_id}"
-        return f"bronze/{self.project_name}/{self.scraper_name}/{self.run_date.strftime('%Y/%m/%d')}/run={self.run_id}"
+        return f"{self._scraper_path}/{self.run_date.strftime('%Y/%m/%d')}/run={self.run_id}"
 
     async def save(self, name: str, id_value: str, content: bytes) -> None:
         key = f"{self.files_path}/{self.identifier}={id_value}/{name}"
@@ -307,10 +341,14 @@ class SilverLayer(Layer):
                         actor.json
     """
 
+    @staticmethod
+    def _create_scraper_path(project_name: str, scraper_name: str) -> str:
+        return f"silver/{project_name}/{scraper_name}"
+
     @property
     def _run_path(self) -> str:
         # return f"silver/{self.project_name}/{self.scraper_name}/dt={datetime.now(UTC).strftime('%Y-%m-%d')}/run={self.run_id}"
-        return f"silver/{self.project_name}/{self.scraper_name}/dt={self.run_date.strftime('%Y-%m-%d')}/run={self.run_id}"
+        return f"{self._scraper_path}/dt={self.run_date.strftime('%Y-%m-%d')}/run={self.run_id}"
 
     async def save(self, name: str, content: bytes) -> None:
         key = f"{self._run_path}/{name}"
