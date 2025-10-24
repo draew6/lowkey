@@ -212,6 +212,7 @@ class Layer(ABC):
     @abstractmethod
     def _create_scraper_path(project_name: str, scraper_name: str) -> str: ...
 
+    @property
     def _scraper_path(self) -> str:
         return self._create_scraper_path(self.project_name, self.scraper_name)
 
