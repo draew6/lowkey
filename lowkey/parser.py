@@ -124,6 +124,7 @@ class Parser:
         cls,
         project_name: str,
         scraper_name: str,
+        run_id: str,
         identifier: str,
         handler: Callable[[RawFile], Data],
         run_info: RunInfo,
@@ -131,11 +132,10 @@ class Parser:
         output_storage: Storage = None,
         batch_size: int = 10000,
     ):
-        RUN_ID = "sadasdasd"
         run_parser = cls(
             project_name,
             scraper_name,
-            RUN_ID,
+            run_id,
             identifier,
             handler,
             input_storage,
@@ -148,11 +148,11 @@ class Parser:
         )
         batch_raw_data = []
         file_index = 0
-        for index, run_id in enumerate(run_ids):
+        for index, r_id in enumerate(run_ids):
             parser = cls(
                 project_name,
                 scraper_name,
-                run_id,
+                r_id,
                 identifier,
                 handler,
                 input_storage,
