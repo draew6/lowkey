@@ -14,9 +14,11 @@ from pydantic import BaseModel
 HTMLFile = str
 JSONFile = dict
 Data = list[BaseModel]
+DataWithRunId = list[tuple[str, BaseModel]]
 
 RawFile = HTMLFile | JSONFile
 RawData = list[RawFile]
+RawDataWithRunId = list[tuple[str, RawFile]]
 
 
 class Parser:
@@ -26,10 +28,10 @@ class Parser:
         scraper_name: str,
         run_id: str,
         identifier: str,
-        handler: Callable[[RawFile], Data],
+        handler: Callable[[RawFile, RunInfo | None], Data],
         input_storage: Storage,
         output_storage: Storage,
-        run_info: RunInfo
+        run_info: RunInfo,
     ):
         self.bronze = BronzeLayer(
             input_storage, project_name, scraper_name, run_id, identifier
@@ -49,23 +51,31 @@ class Parser:
             return hint
         raise ValueError("Unsupported handler input type")
 
-    async def load_input_files(self, key: str) -> RawData:
+    async def load_input_files(self, key: str) -> RawDataWithRunId:
         input_type = self.detect_file_type()
         files = await self.bronze.storage.load_files(key, "*.zst")
         dctx = zstd.ZstdDecompressor()
-        decompressed_files = [dctx.decompress(file.content) for file in files]
+        decompressed_files = [
+            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))
+            for file in files
+        ]
         if input_type is HTMLFile:
-            return [file.decode("utf-8") for file in decompressed_files]
+            return [
+                (run_id, file.decode("utf-8")) for run_id, file in decompressed_files
+            ]
         elif input_type is JSONFile:
-            return [json.loads(file.decode("utf-8")) for file in decompressed_files]
+            return [
+                (run_id, json.loads(file.decode("utf-8")))
+                for run_id, file in decompressed_files
+            ]
         else:
             raise ValueError("Unsupported handler input type")
 
-    async def load_run_input_files(self) -> RawData:
-        return await self.load_input_files(self.bronze.files_path)
+    async def load_run_input_files(self) -> RawDataWithRunId:
+        files = await self.load_input_files(self.bronze.files_path)
+        return files
 
-
-    async def parse(self, raw_data: RawData) -> Data:
+    async def parse(self, raw_data: RawDataWithRunId) -> DataWithRunId:
         results = []
 
         # Inspect handler once
@@ -74,22 +84,18 @@ class Parser:
 
         # Prepare kwargs only if handler expects a RunInfo
         kwargs = {}
-        if (
-                "run_info" in sig.parameters
-                and type_hints.get("run_info") is RunInfo
-        ):
+        if "run_info" in sig.parameters and type_hints.get("run_info") is RunInfo:
             kwargs["run_info"] = self.run_info
 
         # Iterate and call handler with the same kwargs
-        for raw_file in raw_data:
+        for run_id, raw_file in raw_data:
             parsed_data = self.handler(raw_file, **kwargs)
-            results.extend(parsed_data)
+            results.extend([(run_id, pdt) for pdt in parsed_data])
 
         return results
 
-
     async def save(
-        self, data: Data, batch_size: int = 10000, outer_index: int = 0
+        self, data: DataWithRunId, batch_size: int = 10000, outer_index: int = 0
     ) -> int:
         if not data:
             return outer_index
@@ -99,7 +105,9 @@ class Parser:
             start_index = i * batch_size
             end_index = start_index + batch_size
             batch_data = data[start_index:end_index]
-            rows = [item.model_dump() for item in batch_data]
+            rows = [
+                item.model_dump() | {"source_run_id": run_id} for run_id, item in batch_data
+            ]
             df = pd.DataFrame(rows)
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
@@ -128,7 +136,7 @@ class Parser:
             handler,
             input_storage,
             output_storage or input_storage,
-            run_info
+            run_info,
         )
         await parser.silver.mark_run_as_started()
         await parser.silver.create_run_info(run_info)
