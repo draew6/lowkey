@@ -29,12 +29,14 @@ class Parser:
         handler: Callable[[RawFile], Data],
         input_storage: Storage,
         output_storage: Storage,
+        run_info: RunInfo
     ):
         self.bronze = BronzeLayer(
             input_storage, project_name, scraper_name, run_id, identifier
         )
         self.silver = SilverLayer(output_storage, project_name, scraper_name, run_id)
         self.handler = handler
+        self.run_info = run_info
 
     def detect_file_type(self):
         signature = inspect.signature(self.handler)
@@ -59,15 +61,32 @@ class Parser:
         else:
             raise ValueError("Unsupported handler input type")
 
-    async def load_run_input_files(self):
+    async def load_run_input_files(self) -> RawData:
         return await self.load_input_files(self.bronze.files_path)
+
 
     async def parse(self, raw_data: RawData) -> Data:
         results = []
+
+        # Inspect handler once
+        sig = inspect.signature(self.handler)
+        type_hints = get_type_hints(self.handler)
+
+        # Prepare kwargs only if handler expects a RunInfo
+        kwargs = {}
+        if (
+                "run_info" in sig.parameters
+                and type_hints.get("run_info") is RunInfo
+        ):
+            kwargs["run_info"] = self.run_info
+
+        # Iterate and call handler with the same kwargs
         for raw_file in raw_data:
-            parsed_data = self.handler(raw_file)
+            parsed_data = self.handler(raw_file, **kwargs)
             results.extend(parsed_data)
+
         return results
+
 
     async def save(
         self, data: Data, batch_size: int = 10000, outer_index: int = 0
@@ -95,7 +114,7 @@ class Parser:
         scraper_name: str,
         run_id: str,
         identifier: str,
-        handler: Callable[[RawFile], Data],
+        handler: Callable[[RawFile, RunInfo | None], Data],
         run_info: RunInfo,
         input_storage: Storage,
         output_storage: Storage = None,
@@ -109,6 +128,7 @@ class Parser:
             handler,
             input_storage,
             output_storage or input_storage,
+            run_info
         )
         await parser.silver.mark_run_as_started()
         await parser.silver.create_run_info(run_info)
@@ -118,12 +138,19 @@ class Parser:
             )
         else:
             raw_data = await parser.load_run_input_files()
+
         try:
+            if not raw_data:
+                raise ValueError("No input files found to parse.")
+
             parsed_data = await parser.parse(raw_data)
             await parser.save(parsed_data)
+            await parser.silver.mark_run_as_completed()
+
         except Exception as e:
             await parser.silver.mark_run_as_failed()
             raise e
-        await parser.silver.mark_run_as_completed()
-        await parser.bronze.storage.close()
-        await parser.silver.storage.close()
+
+        finally:
+            await parser.silver.storage.close()
+            await parser.bronze.storage.close()
