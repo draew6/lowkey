@@ -41,7 +41,11 @@ async def create_crawler(
         request_handler=router,
         session_pool=session_pool,
         proxy_configuration=proxy_configuration,
-        concurrency_settings=ConcurrencySettings(max_tasks_per_minute=1000),
+        concurrency_settings=ConcurrencySettings(
+            max_tasks_per_minute=60,
+            desired_concurrency=1,
+            max_concurrency=2
+        ),
         http_client=http_client,
         request_manager=request_manager,
     )
