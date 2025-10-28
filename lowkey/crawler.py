@@ -10,6 +10,8 @@ from .models.client import APIClient
 from .storage import ScraperStorage, Storage
 from .components.httpclient import HttpxHttpClient
 from .models.user import User
+import asyncio
+import random
 
 
 async def create_crawler(
@@ -22,6 +24,7 @@ async def create_crawler(
     api_client: APIClient,
     identifier_value_fn=Callable[[str], str | None],
     save_request: bool = True,
+    wait_time_between_requests: float = 3,
     regen_time: int = 3,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     session_pool = SessionPool(users=users, persistence_enabled=False, regen_time=regen_time)
@@ -66,6 +69,12 @@ async def create_crawler(
             context.request.headers = context.request.headers | {
                 "Cookie": cookie_header
             }
+
+    @crawler.pre_navigation_hook
+    async def wait_between_requests(context: BeautifulSoupCrawlingContext):
+        wait_time = max(regen_time, int(wait_time_between_requests))
+        sleep_time = random.uniform(wait_time/2, wait_time*1.5)
+        await asyncio.sleep(sleep_time)
 
     @crawler.router.handler("visit")
     async def visit_handler(context: BeautifulSoupCrawlingContext): ...
