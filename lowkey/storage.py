@@ -5,7 +5,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, UTC
-from crawlee.crawlers import BeautifulSoupCrawler
+from crawlee.crawlers import BeautifulSoupCrawler, PlaywrightCrawler
 from miniopy_async import Minio
 import io
 import fnmatch
@@ -377,7 +377,10 @@ class ScraperStorage:
         self.api_client = api_client
 
     async def start_run(
-        self, crawler: BeautifulSoupCrawler, run_info: RunInfo, actor_info: ScraperInfo
+        self,
+        crawler: BeautifulSoupCrawler | PlaywrightCrawler,
+        run_info: RunInfo,
+        actor_info: ScraperInfo,
     ):
         await self.bronze.create_run_info(run_info)
         await self.bronze.create_actor_info(actor_info)
