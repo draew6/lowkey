@@ -106,7 +106,8 @@ class Parser:
             end_index = start_index + batch_size
             batch_data = data[start_index:end_index]
             rows = [
-                item.model_dump() | {"source_run_id": run_id} for run_id, item in batch_data
+                item.model_dump() | {"source_run_id": run_id}
+                for run_id, item in batch_data
             ]
             df = pd.DataFrame(rows)
             buf = BytesIO()
