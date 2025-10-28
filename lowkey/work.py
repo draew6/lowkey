@@ -66,6 +66,7 @@ async def get_crawler(
     identifier_value_fn=Callable[[str], str | None],
     handler_name: str | None = None,
     save_request: bool = True,
+    regen_time: int = 3,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     crawler, scraper_storage, router = await create_crawler(
         project_name,
@@ -77,6 +78,7 @@ async def get_crawler(
         api_client,
         identifier_value_fn,
         save_request,
+        regen_time,
     )
     requests = create_requests(work, before_start_urls, users, handler_name)
     await crawler.add_requests(requests=requests)

@@ -22,8 +22,9 @@ async def create_crawler(
     api_client: APIClient,
     identifier_value_fn=Callable[[str], str | None],
     save_request: bool = True,
+    regen_time: int = 3,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
-    session_pool = SessionPool(users=users, persistence_enabled=False, regen_time=2)
+    session_pool = SessionPool(users=users, persistence_enabled=False, regen_time=regen_time)
     proxy_configuration = ProxyConfiguration(users=users)
     scraper_storage = ScraperStorage(
         storage, project_name, scraper_name, run_id, identifier, api_client
