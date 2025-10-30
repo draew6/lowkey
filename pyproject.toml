@@ -18,7 +18,7 @@ miniopy_async = ">=1.23.4,<2.0.0"
 fastlet = { git = "https://github.com/draew6/fastlet.git" }
 aiohttp = "<3.13.0"
 pandas = ">=2.0.0,<3.0.0"
-bs4 = ">=4.14.0,<5.0.0"
+beautifulsoup4 = ">=4.14.0,<5.0.0"
 
 [build-system]
 requires = ["poetry-core"]
