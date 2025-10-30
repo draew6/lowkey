@@ -1,5 +1,5 @@
 from typing import Literal, TypeVar, Generic
-from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext, BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext
+from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext, BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext, BasicCrawlingContext as OldBasicCrawlingContext
 from .session import Session
 from bs4 import BeautifulSoup
 
@@ -30,5 +30,10 @@ class ParsedHttpCrawlingContext(
 
 class BeautifulSoupCrawlingContext(
     _DiscoveryContextMixin, OldBeautifulSoupCrawlingContext
+):
+    session: Session
+
+class BasicCrawlingContext(
+    _DiscoveryContextMixin, OldBasicCrawlingContext
 ):
     session: Session
