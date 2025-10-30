@@ -1,11 +1,11 @@
-from typing import Literal
-
+from typing import Literal, TypeVar, Generic
 from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext
 from .session import Session
 from bs4 import BeautifulSoup
 
+TParseResult = TypeVar('TParseResult')
 
-class ParsedHttpCrawlingContext(OldParsedHttpCrawlingContext):
+class ParsedHttpCrawlingContext(OldParsedHttpCrawlingContext, Generic[TParseResult]):
     session: Session
 
     def continue_discovery(self) -> None:
