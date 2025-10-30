@@ -5,9 +5,9 @@ from crawlee.storages import RequestQueue
 from .components.session import SessionPool
 from .components.proxyconfig import ProxyConfiguration
 from crawlee.crawlers import (
-    BeautifulSoupCrawler,
     PlaywrightCrawler,
 )
+from .components.crawler import BeautifulSoupCrawler
 from .hooks.httpx import make_save_request_curl
 from .models.client import APIClient
 from .storage import ScraperStorage, Storage

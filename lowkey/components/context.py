@@ -1,5 +1,5 @@
 from typing import Literal, TypeVar, Generic
-from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext
+from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext, BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext
 from .session import Session
 from bs4 import BeautifulSoup
 
@@ -23,4 +23,4 @@ class ParsedHttpCrawlingContext(OldParsedHttpCrawlingContext, Generic[TParseResu
         return self.session.phase
 
 
-class BeautifulSoupCrawlingContext(ParsedHttpCrawlingContext[BeautifulSoup]): ...
+class BeautifulSoupCrawlingContext(OldBeautifulSoupCrawlingContext): ...
