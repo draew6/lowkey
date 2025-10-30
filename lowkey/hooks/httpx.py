@@ -9,9 +9,10 @@ def make_save_request_curl(
     storage: ScraperStorage, identifier_value_fn: Callable[[str], str | None]
 ):
     async def save_request_curl(request: httpx.Request):
-        identifier_value = identifier_value_fn(str(request.url))
-        if not identifier_value:
+        phase = request.extensions.get("lk-phase")
+        if phase == "DISCOVERY":
             return None
+        identifier_value = identifier_value_fn(str(request.url))
         curl_request = Curlify(request)
         curl = curl_request.to_curl()
         curl_file = curl.encode("utf-8")

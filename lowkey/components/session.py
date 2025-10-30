@@ -1,10 +1,36 @@
 from datetime import datetime, UTC
+from typing import Literal
 from crawlee.events import EventManager
-from crawlee.sessions import Session, SessionPool as OriginalSessionPool
+from crawlee.sessions import (
+    Session as OriginalSession,
+    SessionPool as OriginalSessionPool,
+)
 from crawlee.sessions._session_pool import CreateSessionFunctionType
 import random
 import asyncio
 from ..models.user import User
+
+
+class Session(OriginalSession):
+    def is_in_discovery_phase(self) -> bool:
+        """
+        Check if the session is in the discovery phase.
+        A session is considered to be in the discovery phase if it didn't arrive at a content interesting to scraper.
+        """
+        return self.phase == "DISCOVERY"
+
+    def turn_to_final_phase(self) -> None:
+        """Turn the session to final phase."""
+        self.user_data["phase"] = "FINAL"
+
+    def turn_to_discovery_phase(self) -> None:
+        """Turn the session to discovery phase."""
+        self.user_data["phase"] = "DISCOVERY"
+
+    @property
+    def phase(self) -> Literal["DISCOVERY", "FINAL"]:
+        """Get the current phase of the session."""
+        return self.user_data.get("phase", "FINAL")
 
 
 class SessionPool(OriginalSessionPool):

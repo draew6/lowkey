@@ -2,6 +2,12 @@ from crawlee.http_clients import HttpxHttpClient as OriginalHttpxHttpClient
 import httpx
 
 
+async def extract_phase(request: httpx.Request):
+    phase = request.headers.pop("lk-phase", None)
+    if phase:
+        request.extensions["lk-phase"] = phase
+
+
 class HttpxHttpClient(OriginalHttpxHttpClient):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,6 +24,7 @@ class HttpxHttpClient(OriginalHttpxHttpClient):
             self.event_hooks["request"] = request_hooks
         if response_hooks:
             self.event_hooks["response"] = response_hooks
+        self.event_hooks["request"].insert(0, extract_phase)
 
     @classmethod
     def get_client_with_hooks(cls, hooks: list = None):

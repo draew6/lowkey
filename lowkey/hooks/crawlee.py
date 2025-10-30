@@ -1,6 +1,6 @@
 import json
 from typing import Callable
-from crawlee.crawlers import ParsedHttpCrawlingContext
+from ..components.context import ParsedHttpCrawlingContext
 from .decorators import after_handler
 from ..storage import ScraperStorage
 import zstandard as zstd
@@ -15,6 +15,8 @@ async def save_raw_html(
     context: ParsedHttpCrawlingContext,
 ):
     """Saves the raw HTML response to storage."""
+    if context.is_in_discovery_phase:
+        return
     url = context.request.url
     identifier_value = identifier_value_fn(url)
     body = await context.http_response.read()

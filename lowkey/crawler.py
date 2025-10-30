@@ -2,11 +2,10 @@ from typing import Callable
 from crawlee.router import Router
 from crawlee import ConcurrencySettings
 from crawlee.storages import RequestQueue
-from .components.sessionpool import SessionPool
+from .components.session import SessionPool
 from .components.proxyconfig import ProxyConfiguration
 from crawlee.crawlers import (
     BeautifulSoupCrawler,
-    BeautifulSoupCrawlingContext,
     PlaywrightCrawler,
 )
 from .hooks.httpx import make_save_request_curl
@@ -17,6 +16,7 @@ from .models.user import User
 import asyncio
 import random
 from .components.playwright import PlaywrightBrowserPlugin, BrowserPool
+from .components.context import BeautifulSoupCrawlingContext
 
 
 async def create_crawler(
@@ -48,7 +48,6 @@ async def create_crawler(
     request_manager = await RequestQueue.open(name=run_id)
 
     router = Router[BeautifulSoupCrawlingContext]()
-    print(is_browser)
 
     if is_browser:
         plugin = PlaywrightBrowserPlugin.with_user_fingerprints(users)
@@ -92,6 +91,12 @@ async def create_crawler(
             context.request.headers = context.request.headers | {
                 "Cookie": cookie_header
             }
+
+    @crawler.pre_navigation_hook
+    async def pass_user_phase_for_httpx(context: BeautifulSoupCrawlingContext):
+        work_type = context.request.user_data["work_type"]
+        phase = "DISCOVERY" if work_type == "before_start" else context.phase
+        context.request.headers = context.request.headers | {"lk-phase": phase}
 
     @crawler.pre_navigation_hook
     async def wait_between_requests(context: BeautifulSoupCrawlingContext):
