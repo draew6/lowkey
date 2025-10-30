@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 TParseResult = TypeVar('TParseResult')
 
-class ParsedHttpCrawlingContext(OldParsedHttpCrawlingContext, Generic[TParseResult]):
+class _DiscoveryContextMixin:
     session: Session
 
     def continue_discovery(self) -> None:
@@ -22,5 +22,13 @@ class ParsedHttpCrawlingContext(OldParsedHttpCrawlingContext, Generic[TParseResu
     def phase(self) -> Literal["DISCOVERY", "FINAL"]:
         return self.session.phase
 
+class ParsedHttpCrawlingContext(
+    _DiscoveryContextMixin, OldParsedHttpCrawlingContext, Generic[TParseResult]
+):
+    session: Session
 
-class BeautifulSoupCrawlingContext(OldBeautifulSoupCrawlingContext): ...
+
+class BeautifulSoupCrawlingContext(
+    _DiscoveryContextMixin, OldBeautifulSoupCrawlingContext
+):
+    session: Session
