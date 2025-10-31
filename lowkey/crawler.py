@@ -95,7 +95,7 @@ async def create_crawler(
     @crawler.pre_navigation_hook
     async def pass_user_phase_for_httpx(context: BeautifulSoupCrawlingContext):
         work_type = context.request.user_data["work_type"]
-        phase = "DISCOVERY" if work_type == "before_start" else context.phase
+        phase = "DISCOVERY" if work_type == "before_start" else context.session.phase
         context.request.headers = context.request.headers | {"lk-phase": phase}
 
     @crawler.pre_navigation_hook
