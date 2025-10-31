@@ -38,6 +38,9 @@ class Storage(ABC):
     @abstractmethod
     async def list_files(self, key: str, pattern: str) -> list[str]: ...
 
+    @abstractmethod
+    async def delete(self, key: str) -> None: ...
+
 
 class FilesystemStorage(Storage):
     def __init__(self, base_path: str) -> None:
@@ -63,6 +66,11 @@ class FilesystemStorage(Storage):
                 data.append(File(name=file, content=f.read()))
 
         return data
+
+    async def delete(self, key: str) -> None:
+        path = os.path.join(self.base_path, key)
+        if os.path.exists(path):
+            os.remove(path)
 
     async def close(self) -> None:
         pass
@@ -117,6 +125,9 @@ class MinioStorage(Storage):
 
         results = await asyncio.gather(*tasks)
         return results
+
+    async def delete(self, key: str) -> None:
+        await self.client.remove_object(self.bucket_name, key)
 
     async def close(self) -> None:
         await self.client.close_session()
@@ -223,6 +234,9 @@ class Layer(ABC):
     @abstractmethod
     async def save(self, *args: any, **kwargs: any) -> None: ...
 
+    @abstractmethod
+    async def remove(self, *args: any, **kwargs: any) -> None: ...
+
     @property
     @abstractmethod
     def files_path(self) -> str: ...
@@ -322,6 +336,10 @@ class BronzeLayer(Layer):
         key = f"{self.files_path}/{self.identifier}={id_value}/{name}"
         await self.storage.save(key, content)
 
+    async def remove(self, name: str, id_value: str) -> None:
+        key = f"{self.files_path}/{self.identifier}={id_value}/{name}"
+        await self.storage.delete(key)
+
     @property
     def files_path(self) -> str:
         return f"{self._run_path}/artifacts"
@@ -354,6 +372,10 @@ class SilverLayer(Layer):
     async def save(self, name: str, content: bytes) -> None:
         key = f"{self._run_path}/{name}"
         await self.storage.save(key, content)
+
+    async def remove(self, name: str) -> None:
+        key = f"{self._run_path}/{name}"
+        await self.storage.delete(key)
 
     @property
     def files_path(self) -> str:
