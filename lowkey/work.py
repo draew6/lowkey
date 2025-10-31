@@ -39,7 +39,7 @@ def create_requests(
                 unique_key=f"visit_{user.session_id}{random.randint(0, 10000)}",
                 payload=None,
             )
-            request.user_data["work_type"] = "before_start"
+            request.user_data["work_type"] = "BEFORE_START"
             requests.append(request)
 
     for i, work_unit in enumerate(work):
@@ -52,7 +52,7 @@ def create_requests(
             unique_key=None,
             payload=json.dumps(work_unit.payload) if work_unit.payload else None,
         )
-        request.user_data["work_type"] = "work"
+        request.user_data["work_type"] = "WORK"
         requests.append(request)
 
     return requests

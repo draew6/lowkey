@@ -10,7 +10,8 @@ def make_save_request_curl(
 ):
     async def save_request_curl(request: httpx.Request):
         phase = request.extensions.get("lk-phase")
-        if phase == "DISCOVERY":
+        work_type = request.extensions.get("lk-work-type")
+        if work_type == "BEFORE_START":
             return None
         identifier_value = identifier_value_fn(str(request.url))
         curl_request = Curlify(request)

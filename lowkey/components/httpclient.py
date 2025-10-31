@@ -4,8 +4,11 @@ import httpx
 
 async def extract_phase(request: httpx.Request):
     phase = request.headers.pop("lk-phase", None)
+    work_type = request.headers.pop("lk-work-type", None)
     if phase:
         request.extensions["lk-phase"] = phase
+    if work_type:
+        request.extensions["lk-work-type"] = work_type
 
 
 class HttpxHttpClient(OriginalHttpxHttpClient):
