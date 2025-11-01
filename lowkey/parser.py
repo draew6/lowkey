@@ -18,7 +18,7 @@ DataWithRunId = list[tuple[str, BaseModel]]
 
 RawFile = HTMLFile | JSONFile
 RawData = list[RawFile]
-RawDataWithRunId = list[tuple[str, RawFile]]
+RawDataWithRunIdAndInfo = list[tuple[str, RunInfo, RawFile]]
 
 
 class Parser:
@@ -51,44 +51,52 @@ class Parser:
             return hint
         raise ValueError("Unsupported handler input type")
 
-    async def load_input_files(self, key: str) -> RawDataWithRunId:
+    async def load_input_files(self, key: str) -> RawDataWithRunIdAndInfo:
         input_type = self.detect_file_type()
         files = await self.bronze.storage.load_files(key, "*.zst")
+        run_info_files = await self.bronze.storage.load_files(key, "*run.json")
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [
             (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))
             for file in files
         ]
+        run_infos = {
+            file.name.split("run=")[1].split("/")[0]: RunInfo(
+                **json.loads(file.content.decode("utf-8"))
+            )
+            for file in run_info_files
+        }
         if input_type is HTMLFile:
             return [
-                (run_id, file.decode("utf-8")) for run_id, file in decompressed_files
+                (run_id, run_infos[run_id], file.decode("utf-8"))
+                for run_id, file in decompressed_files
             ]
         elif input_type is JSONFile:
             return [
-                (run_id, json.loads(file.decode("utf-8")))
+                (run_id, run_infos[run_id], json.loads(file.decode("utf-8")))
                 for run_id, file in decompressed_files
             ]
         else:
             raise ValueError("Unsupported handler input type")
 
-    async def load_run_input_files(self) -> RawDataWithRunId:
+    async def load_run_input_files(self) -> RawDataWithRunIdAndInfo:
         files = await self.load_input_files(self.bronze.files_path)
         return files
 
-    async def parse(self, raw_data: RawDataWithRunId) -> DataWithRunId:
+    async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunId:
         results = []
 
         # Inspect handler once
         sig = inspect.signature(self.handler)
         type_hints = get_type_hints(self.handler)
 
-        # Prepare kwargs only if handler expects a RunInfo
-        kwargs = {}
-        if "run_info" in sig.parameters and type_hints.get("run_info") is RunInfo:
-            kwargs["run_info"] = self.run_info
-
         # Iterate and call handler with the same kwargs
-        for run_id, raw_file in raw_data:
+        for run_id, run_info, raw_file in raw_data:
+            # Prepare kwargs only if handler expects a RunInfo
+
+            kwargs = {}
+            if "run_info" in sig.parameters and type_hints.get("run_info") is RunInfo:
+                kwargs["run_info"] = run_info
             parsed_data = self.handler(raw_file, **kwargs)
             results.extend([(run_id, pdt) for pdt in parsed_data])
 

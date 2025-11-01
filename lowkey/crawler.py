@@ -33,7 +33,6 @@ async def create_crawler(
     regen_time: int = 3,
     is_browser: bool = False,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
-
     session_pool = SessionPool(
         users=users, persistence_enabled=False, regen_time=regen_time
     )
@@ -97,7 +96,10 @@ async def create_crawler(
     async def pass_user_phase_for_httpx(context: BeautifulSoupCrawlingContext):
         work_type = context.request.user_data.get("work_type", context.session.phase)
         phase = "DISCOVERY" if work_type == "BEFORE_START" else context.session.phase
-        context.request.headers = context.request.headers | {"lk-phase": phase, "lk-work-type": work_type}
+        context.request.headers = context.request.headers | {
+            "lk-phase": phase,
+            "lk-work-type": work_type,
+        }
 
     @crawler.pre_navigation_hook
     async def wait_between_requests(context: BeautifulSoupCrawlingContext):

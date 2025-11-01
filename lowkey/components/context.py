@@ -1,9 +1,13 @@
 from typing import Literal, TypeVar, Generic
-from crawlee.crawlers import ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext, BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext, BasicCrawlingContext as OldBasicCrawlingContext
+from crawlee.crawlers import (
+    ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext,
+    BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext,
+    BasicCrawlingContext as OldBasicCrawlingContext,
+)
 from .session import Session
-from bs4 import BeautifulSoup
 
-TParseResult = TypeVar('TParseResult')
+TParseResult = TypeVar("TParseResult")
+
 
 class _DiscoveryContextMixin:
     session: Session
@@ -22,6 +26,7 @@ class _DiscoveryContextMixin:
     def phase(self) -> Literal["DISCOVERY", "FINAL"]:
         return self.session.phase
 
+
 class ParsedHttpCrawlingContext(
     _DiscoveryContextMixin, OldParsedHttpCrawlingContext, Generic[TParseResult]
 ):
@@ -33,7 +38,6 @@ class BeautifulSoupCrawlingContext(
 ):
     session: Session
 
-class BasicCrawlingContext(
-    _DiscoveryContextMixin, OldBasicCrawlingContext
-):
+
+class BasicCrawlingContext(_DiscoveryContextMixin, OldBasicCrawlingContext):
     session: Session
