@@ -92,7 +92,7 @@ class Parser:
         type_hints = get_type_hints(self.handler)
 
         # Iterate and call handler with the same kwargs
-        for run_id, run_info, raw_file in tqdm(raw_data, "Parsing files", unit="file"):
+        for run_id, run_info, raw_file in tqdm(raw_data, desc="Parsing files", unit="file"):
             # Prepare kwargs only if handler expects a RunInfo
 
             kwargs = {}
