@@ -158,7 +158,7 @@ class SessionPool(OriginalSessionPool):
                 user_data={
                     k: v
                     for k, v in session.user_data.items()
-                    if k not in ["proxy_url", "user_agent", "fingerprint", "cookies"]
+                    if k not in ["proxy_url", "user_agent", "fingerprint", "cookies", "phase"]
                 },
             )
             users.append(user)
