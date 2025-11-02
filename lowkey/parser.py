@@ -51,21 +51,25 @@ class Parser:
             return hint
         raise ValueError("Unsupported handler input type")
 
-    async def load_input_files(self, key: str) -> RawDataWithRunIdAndInfo:
-        input_type = self.detect_file_type()
-        files = await self.bronze.storage.load_files(key, "*.zst")
+    async def _get_run_info_files(self, key: str) -> dict[str, RunInfo]:
         run_info_files = await self.bronze.storage.load_files(key, "*run.json")
-        dctx = zstd.ZstdDecompressor()
-        decompressed_files = [
-            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))
-            for file in files
-        ]
         run_infos = {
             file.name.split("run=")[1].split("/")[0]: RunInfo(
                 **json.loads(file.content.decode("utf-8"))
             )
             for file in run_info_files
         }
+        return run_infos
+
+    async def load_input_files(self, key: str, run_infos: dict[str, RunInfo]) -> RawDataWithRunIdAndInfo:
+        input_type = self.detect_file_type()
+        files = await self.bronze.storage.load_files(key, "*.zst")
+        dctx = zstd.ZstdDecompressor()
+        decompressed_files = [
+            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))
+            for file in files
+        ]
+
         if input_type is HTMLFile:
             return [
                 (run_id, run_infos[run_id], file.decode("utf-8"))
@@ -80,7 +84,8 @@ class Parser:
             raise ValueError("Unsupported handler input type")
 
     async def load_run_input_files(self) -> RawDataWithRunIdAndInfo:
-        files = await self.load_input_files(self.bronze.files_path)
+        run_infos = await self._get_run_info_files(self.bronze._run_path)
+        files = await self.load_input_files(self.bronze.files_path, run_infos)
         return files
 
     async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunId:
@@ -150,9 +155,9 @@ class Parser:
         await parser.silver.mark_run_as_started()
         await parser.silver.create_run_info(run_info)
         if full_run:
-            raw_data = await parser.load_input_files(
-                BronzeLayer._create_scraper_path(project_name, scraper_name)
-            )
+            scraper_name = BronzeLayer._create_scraper_path(project_name, scraper_name)
+            run_infos = await parser._get_run_info_files(scraper_name)
+            raw_data = await parser.load_input_files(scraper_name, run_infos)
         else:
             raw_data = await parser.load_run_input_files()
 
