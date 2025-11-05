@@ -9,6 +9,7 @@ import zstandard as zstd
 import json
 import pandas as pd
 from pydantic import BaseModel
+from datetime import date
 
 
 HTMLFile = str
@@ -141,6 +142,7 @@ class Parser:
         input_storage: Storage,
         output_storage: Storage = None,
         full_run: bool = False,
+        date_filter: date = None,
     ):
         parser = cls(
             project_name,
@@ -156,6 +158,10 @@ class Parser:
         await parser.silver.create_run_info(run_info)
         if full_run:
             scraper_name = BronzeLayer._create_scraper_path(project_name, scraper_name)
+            run_infos = await parser._get_run_info_files(scraper_name)
+            raw_data = await parser.load_input_files(scraper_name, run_infos)
+        elif date_filter:
+            scraper_name = f"{BronzeLayer._create_scraper_path(project_name, scraper_name)}/{date_filter.strftime('%Y/%m/%d')}"
             run_infos = await parser._get_run_info_files(scraper_name)
             raw_data = await parser.load_input_files(scraper_name, run_infos)
         else:
