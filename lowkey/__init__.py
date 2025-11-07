@@ -6,6 +6,7 @@ from .storage import (
     FilesystemStorage,
     MinioStorage,
     ActorInfo,
+    Catalog,
 )
 from .settings import ScraperSettings
 from .models.user import User

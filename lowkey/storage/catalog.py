@@ -1,6 +1,6 @@
 import fnmatch
 import json
-
+from typing import Literal
 from .client import Storage
 from datetime import datetime, UTC
 from ..utils import generate_run_id
@@ -20,15 +20,17 @@ class Catalog:
 
     def __init__(
         self,
-        storage: Storage,
+        input_storage: Storage,
+        output_storage: Storage,
         project_name: str,
         scraper_name: str,
-        run_id: str,
+        layer: Literal["bronze", "silver"],
     ) -> None:
-        self.storage = storage
+        self.input_storage = input_storage
+        self.output_storage = output_storage
         self.project_name = project_name
         self.scraper_name = scraper_name
-        self.run_id = run_id
+        self.layer = layer
         self.run_date = datetime.now(UTC)
 
     async def save(self, key: str):
@@ -37,18 +39,26 @@ class Catalog:
             "scraper_name": self.scraper_name,
             "dt": self.run_date.strftime("%Y-%m-%d"),
             "ts": self.run_date.strftime("%Y%m%d%H%M%S"),
-            "run_id": self.run_id,
             "key": key,
         }
         metadata_file_name = generate_run_id()
-        catalog_key = f"{self.date_path(self.run_date)}/{metadata_file_name}.json"
-        await self.storage.save(catalog_key, json.dumps(metadata).encode("utf-8"))
+        catalog_key = (
+            f"{self.catalog_date_path(self.run_date)}/{metadata_file_name}.json"
+        )
+        await self.output_storage.save(
+            catalog_key, json.dumps(metadata).encode("utf-8")
+        )
 
-    def scraper_path(self):
-        return f"catalog/bronze/{self.project_name}/{self.scraper_name}"
+    @property
+    def catalog_scraper_path(self):
+        return f"catalog/{self.layer}/{self.project_name}/{self.scraper_name}"
 
-    def date_path(self, date: datetime):
-        return f"{self.scraper_path()}/dt={date.strftime('%Y-%m-%d')}"
+    def catalog_date_path(self, date: datetime):
+        return f"{self.catalog_scraper_path}/dt={date.strftime('%Y-%m-%d')}"
+
+    @property
+    def input_path(self):
+        return f"{self.layer}/{self.project_name}/{self.scraper_name}"
 
     async def list_files(
         self,
@@ -59,9 +69,9 @@ class Catalog:
         sql_query = f"""
         SELECT key
         FROM (
-            SELECT * FROM read_parquet('s3://prod/{self.scraper_path()}/*.parquet', hive_partitioning=1)
+            SELECT * FROM read_parquet('s3://prod/{self.catalog_scraper_path}/*.parquet', hive_partitioning=1)
             UNION ALL
-            SELECT * FROM read_json('s3://prod/{self.scraper_path()}/*.json', format='auto')
+            SELECT * FROM read_json('s3://prod/{self.catalog_scraper_path}/*.json', format='auto')
         )
         WHERE starts_with(key, '{prefix}')
         OR starts_with(key, '/{prefix}')
@@ -74,5 +84,12 @@ class Catalog:
             if fnmatch.fnmatch(rel, pattern):
                 names.append(name)
         return names
+
+    async def generate(self):
+        file_names = await self.input_storage.list_files(self.input_path, "*")
+        for file_name in file_names:
+            await self.save(file_name)
+        await self.input_storage.close()
+        await self.output_storage.close()
 
     async def compact_catalog_files(self): ...
