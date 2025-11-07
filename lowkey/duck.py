@@ -1,5 +1,5 @@
 import duckdb
-from lowkey import ScraperSettings
+from .settings import ScraperSettings
 
 
 def query[T](query: str, result: T = dict) -> list[T]:

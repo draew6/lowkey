@@ -3,7 +3,7 @@ import json
 
 from .client import Storage
 from datetime import datetime, UTC
-from .. import generate_run_id
+from ..utils import generate_run_id
 from ..duck import query
 
 

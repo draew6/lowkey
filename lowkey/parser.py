@@ -2,9 +2,10 @@ import inspect
 import math
 from io import BytesIO
 from typing import Callable, get_type_hints
-from lowkey import RunInfo
-from lowkey.storage import SilverLayer, Storage
-from lowkey.storage import BronzeLayer
+from .storage import RunInfo
+from .storage.layer import SilverLayer, BronzeLayer
+from .storage.client import Storage
+from .storage.catalog import Catalog
 import zstandard as zstd
 import json
 import pandas as pd
@@ -34,10 +35,15 @@ class Parser:
         output_storage: Storage,
         run_info: RunInfo,
     ):
-        self.bronze = BronzeLayer(
-            input_storage, project_name, scraper_name, run_id, identifier
+        self.catalog = Catalog(
+            output_storage, project_name, scraper_name, run_id, identifier
         )
-        self.silver = SilverLayer(output_storage, project_name, scraper_name, run_id)
+        self.bronze = BronzeLayer(
+            input_storage, project_name, scraper_name, run_id, identifier, self.catalog
+        )
+        self.silver = SilverLayer(
+            output_storage, project_name, scraper_name, run_id, self.catalog
+        )
         self.handler = handler
         self.run_info = run_info
 
@@ -53,7 +59,8 @@ class Parser:
         raise ValueError("Unsupported handler input type")
 
     async def _get_run_info_files(self, key: str) -> dict[str, RunInfo]:
-        run_info_files = await self.bronze.storage.load_files(key, "*run.json")
+        run_info_file_names = await self.catalog.list_files(key, "*run.json")
+        run_info_files = await self.bronze.storage.load_files(run_info_file_names)
         run_infos = {
             file.name.split("run=")[1].split("/")[0]: RunInfo(
                 **json.loads(file.content.decode("utf-8"))
@@ -66,7 +73,8 @@ class Parser:
         self, key: str, run_infos: dict[str, RunInfo]
     ) -> RawDataWithRunIdAndInfo:
         input_type = self.detect_file_type()
-        files = await self.bronze.storage.load_files(key, "*.zst")
+        file_names = await self.catalog.list_files(key, "*.zst")
+        files = await self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [
             (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))

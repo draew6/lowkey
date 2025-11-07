@@ -1,5 +1,5 @@
 from typing import Annotated
-from lowkey.settings import ScraperSettings as Settings
+from ..settings import ScraperSettings as Settings
 from fastapi import Depends
 from ..storage import MinioStorage
 
