@@ -62,7 +62,9 @@ class Parser:
         }
         return run_infos
 
-    async def load_input_files(self, key: str, run_infos: dict[str, RunInfo]) -> RawDataWithRunIdAndInfo:
+    async def load_input_files(
+        self, key: str, run_infos: dict[str, RunInfo]
+    ) -> RawDataWithRunIdAndInfo:
         input_type = self.detect_file_type()
         files = await self.bronze.storage.load_files(key, "*.zst")
         dctx = zstd.ZstdDecompressor()
