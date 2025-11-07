@@ -44,11 +44,11 @@ class Catalog:
         catalog_key = f"{self.date_path(self.run_date)}/{metadata_file_name}.json"
         await self.storage.save(catalog_key, json.dumps(metadata).encode("utf-8"))
 
-    async def scraper_path(self):
+    def scraper_path(self):
         return f"catalog/bronze/{self.project_name}/{self.scraper_name}"
 
-    async def date_path(self, date: datetime):
-        return f"{await self.scraper_path()}/dt={date.strftime('%Y-%m-%d')}"
+    def date_path(self, date: datetime):
+        return f"{self.scraper_path()}/dt={date.strftime('%Y-%m-%d')}"
 
     async def list_files(
         self,
