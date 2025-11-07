@@ -24,14 +24,12 @@ class Catalog:
         project_name: str,
         scraper_name: str,
         run_id: str,
-        identifier: str,
     ) -> None:
         self.storage = storage
         self.project_name = project_name
         self.scraper_name = scraper_name
         self.run_id = run_id
         self.run_date = datetime.now(UTC)
-        self.identifier = identifier
 
     async def save(self, key: str):
         metadata = {
@@ -40,8 +38,6 @@ class Catalog:
             "dt": self.run_date.strftime("%Y-%m-%d"),
             "ts": self.run_date.strftime("%Y%m%d%H%M%S"),
             "run_id": self.run_id,
-            "identifier": self.identifier,
-            "id_value": key.split(f"{self.identifier}=")[1].split("/")[0],
             "key": key,
         }
         metadata_file_name = generate_run_id()

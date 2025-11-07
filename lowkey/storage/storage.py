@@ -17,7 +17,7 @@ class ScraperStorage:
         identifier: str,
         api_client: APIClient,
     ) -> None:
-        catalog = Catalog(storage, project_name, scraper_name, run_id, identifier)
+        catalog = Catalog(storage, project_name, scraper_name, run_id)
         self.bronze = BronzeLayer(
             storage, project_name, scraper_name, run_id, identifier, catalog
         )
