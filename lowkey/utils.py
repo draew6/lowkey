@@ -6,7 +6,7 @@ from collections.abc import Mapping
 
 def generate_run_id() -> str:
     return "".join(
-        random.choice(string.ascii_letters + string.digits) for _ in range(10)
+        random.choice(string.ascii_letters + string.digits) for _ in range(15)
     )
 
 
