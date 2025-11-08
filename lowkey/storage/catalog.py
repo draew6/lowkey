@@ -116,7 +116,7 @@ class Catalog:
             df = pd.DataFrame(rows)
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
-            parquet_file_name = f"{batch_number:06d}.parquet"
+            parquet_file_name = f"{generate_run_id()}-{batch_number:06d}.parquet"
             await self.output_storage.save(
                 f"{self.catalog_date_path(datetime.now(UTC))}/parquet/{parquet_file_name}",
                 buf.getvalue(),
