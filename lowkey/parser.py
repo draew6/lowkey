@@ -67,7 +67,7 @@ class Parser:
         raise ValueError("Unsupported handler input type")
 
     async def _get_run_info_files(self, key: str) -> dict[str, RunInfo]:
-        run_info_file_names = await self.catalog.list_files(key, "*run.json")
+        run_info_file_names = await self.bronze_catalog.list_files(key, "*run.json")
         run_info_files = await self.bronze.storage.load_files(run_info_file_names)
         run_infos = {
             file.name.split("run=")[1].split("/")[0]: RunInfo(
@@ -81,7 +81,7 @@ class Parser:
         self, key: str, run_infos: dict[str, RunInfo]
     ) -> RawDataWithRunIdAndInfo:
         input_type = self.detect_file_type()
-        file_names = await self.catalog.list_files(key, "*.zst")
+        file_names = await self.bronze_catalog.list_files(key, "*.zst")
         files = await self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [

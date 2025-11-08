@@ -25,7 +25,9 @@ class Storage(ABC):
     async def close(self) -> None: ...
 
     @abstractmethod
-    async def list_files(self, key: str, pattern: str) -> list[str]: ...
+    async def list_files(
+        self, key: str, pattern: str, limit: int = None
+    ) -> list[str]: ...
 
     @abstractmethod
     async def delete(self, key: str) -> None: ...
@@ -42,9 +44,11 @@ class FilesystemStorage(Storage):
         with open(path, "wb") as f:
             f.write(value)
 
-    async def list_files(self, key: str, pattern: str) -> list[str]:
+    async def list_files(self, key: str, pattern: str, limit: int = None) -> list[str]:
         path = os.path.join(self.base_path, key, pattern)
         files = glob.glob(path)
+        if limit:
+            return files[:limit]
         return files
 
     async def load_files(self, file_names: list[str]) -> list[File]:
@@ -84,17 +88,22 @@ class MinioStorage(Storage):
             length=len(value),
         )
 
-    async def list_files(self, key: str, pattern: str) -> list[str]:
+    async def list_files(self, key: str, pattern: str, limit: int = None) -> list[str]:
         objects = self.client.list_objects(
             bucket_name=self.bucket_name, prefix=key, recursive=True
         )
         prefix = key.lstrip("/")
         names = []
+        counter = 0
         async for obj in objects:
             name = obj.object_name
             rel = name[len(prefix) :].lstrip("/")
             if fnmatch.fnmatch(rel, pattern):
                 names.append(name)
+                counter += 1
+            # page has 1000 items
+            if limit is not None and counter >= limit:
+                break
         return names
 
     async def load_files(self, file_names: list[str]) -> list[File]:

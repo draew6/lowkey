@@ -1,6 +1,10 @@
+import asyncio
 import fnmatch
 import json
+from io import BytesIO
 from typing import Literal
+import pandas as pd
+from duckdb import IOException
 from .client import Storage
 from datetime import datetime, UTC
 from ..utils import generate_run_id
@@ -14,7 +18,9 @@ class Catalog:
             {project_name}/
                 {scraper_name}/
                     dt={YYYY}-{MM}-{DD}/
+                      json/
                         EnIO51QmBi.json
+                      parquet/
                         NoHLgxhoQi.parquet
     """
 
@@ -43,7 +49,7 @@ class Catalog:
         }
         metadata_file_name = generate_run_id()
         catalog_key = (
-            f"{self.catalog_date_path(self.run_date)}/{metadata_file_name}.json"
+            f"{self.catalog_date_path(self.run_date)}/json/{metadata_file_name}.json"
         )
         await self.output_storage.save(
             catalog_key, json.dumps(metadata).encode("utf-8")
@@ -66,20 +72,27 @@ class Catalog:
         pattern: str,
     ) -> list[str]:
         prefix = key.lstrip("/")
-        sql_query = f"""
+        sql_query_parquet = f"""
         SELECT key
-        FROM (
-            SELECT * FROM read_parquet('s3://prod/{self.catalog_scraper_path}/*.parquet', hive_partitioning=1)
-            UNION ALL
-            SELECT * FROM read_json('s3://prod/{self.catalog_scraper_path}/*.json', format='auto')
-        )
+        FROM read_parquet('s3://prod/{self.catalog_scraper_path}/dt=*/parquet/*.parquet', hive_partitioning=1)
         WHERE starts_with(key, '{prefix}')
         OR starts_with(key, '/{prefix}')
         """
-        file_names = [file["key"] for file in query(sql_query)]
-
+        sql_query_json = f"""
+        SELECT key FROM read_json('s3://prod/{self.catalog_scraper_path}/dt=*/json/*.json', format='auto')
+        WHERE starts_with(key, '{prefix}')
+        OR starts_with(key, '/{prefix}')
+        """
+        try:
+            parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
+        except IOException:
+            parquet_file_names = []
+        try:
+            json_file_names = [file["key"] for file in query(sql_query_json)]
+        except IOException:
+            json_file_names = []
         names = []
-        for name in file_names:
+        for name in parquet_file_names + json_file_names:
             rel = name[len(prefix) :].lstrip("/")
             if fnmatch.fnmatch(rel, pattern):
                 names.append(name)
@@ -92,4 +105,28 @@ class Catalog:
         await self.input_storage.close()
         await self.output_storage.close()
 
-    async def compact_catalog_files(self): ...
+    async def compact_catalog_files(self):
+        batch_number = 0
+        while True:
+            file_names_batch = await self.output_storage.list_files(
+                f"{self.catalog_scraper_path}", "*.json", 1000
+            )
+            files_batch = await self.output_storage.load_files(file_names_batch)
+            rows = [json.loads(file.content.decode("utf-8")) for file in files_batch]
+            df = pd.DataFrame(rows)
+            buf = BytesIO()
+            df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
+            parquet_file_name = f"{batch_number:06d}.parquet"
+            await self.output_storage.save(
+                f"{self.catalog_date_path(datetime.now(UTC))}/parquet/{parquet_file_name}",
+                buf.getvalue(),
+            )
+            delete_tasks = [
+                self.output_storage.delete(file_name) for file_name in file_names_batch
+            ]
+            await asyncio.gather(*delete_tasks)
+            if len(file_names_batch) < 1000:
+                break
+            batch_number += 1
+        await self.input_storage.close()
+        await self.output_storage.close()
