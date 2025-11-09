@@ -20,7 +20,7 @@ class User(BaseModel):
     user_agent: str
     user_id: int
     user_data: dict
-    cookies: dict
+    cookies: list[dict]
 
     @property
     def session_id(self) -> str:

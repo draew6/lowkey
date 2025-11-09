@@ -148,17 +148,34 @@ class SessionPool(OriginalSessionPool):
         state = self._state.current_value
         users = []
         for session in state.sessions.values():
+            new_cookies = []
+            cookies_used = set()
+            for c in session.user_data.get("cookies", []):
+                if c["name"] not in cookies_used:
+                    new_cookies.append(c)
+                    cookies_used.add(c["name"])
+
+            for c in session.cookies.get_cookies_as_dicts():
+                if c["name"] not in cookies_used:
+                    new_cookies.append(c)
+                    cookies_used.add(c["name"])
             user = User(
                 user_id=User.id_from_session_id(session.id),
                 proxy_ip=session.user_data.get("proxy_url", ""),
                 user_agent=session.user_data.get("user_agent", ""),
                 fingerprint=session.user_data.get("fingerprint", {}),
-                cookies=session.user_data.get("cookies", {})
-                | {cookie["name"]: cookie["value"] for cookie in session.cookies},
+                cookies=new_cookies,
                 user_data={
                     k: v
                     for k, v in session.user_data.items()
-                    if k not in ["proxy_url", "user_agent", "fingerprint", "cookies", "phase"]
+                    if k
+                    not in [
+                        "proxy_url",
+                        "user_agent",
+                        "fingerprint",
+                        "cookies",
+                        "phase",
+                    ]
                 },
             )
             users.append(user)

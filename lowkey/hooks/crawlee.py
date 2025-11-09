@@ -1,5 +1,6 @@
 import json
 from typing import Callable
+from urllib.parse import urlparse
 from ..components.context import ParsedHttpCrawlingContext
 from .decorators import after_handler
 from ..storage import ScraperStorage
@@ -76,13 +77,20 @@ async def random_heartbeat(
 async def save_cookies(
     context: ParsedHttpCrawlingContext,
 ):
-    cookies = extract_cookies(context.http_response.headers)
+    domain = urlparse(context.request.url).hostname
+    cookies = extract_cookies(context.request.headers, domain)
     if cookies:
-        context.session.user_data["cookies"] = {
-            **context.session.user_data.get("cookies", {}),
-            **cookies,
-        }
-
+        new_cookies = []
+        cookies_used = set()
+        for c in cookies:
+            if c["name"] not in cookies_used:
+                new_cookies.append(c)
+                cookies_used.add(c["name"])
+        for c in context.session.user_data.get("cookies", []):
+            if c["name"] not in cookies_used:
+                new_cookies.append(c)
+                cookies_used.add(c["name"])
+        context.session.user_data["cookies"] = new_cookies
 
 @after_handler
 async def save_user_info(

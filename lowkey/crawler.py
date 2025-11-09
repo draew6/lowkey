@@ -86,7 +86,7 @@ async def create_crawler(
         if cookies:
             context.log.debug(f"Applying cookies for {context.session.id}: {cookies}")
             cookie_header = "; ".join(
-                [f"{key}={value}" for key, value in cookies.items()]
+                [f"{cookie["name"]}={cookie["value"]}" for cookie in cookies]
             )
             context.request.headers = context.request.headers | {
                 "Cookie": cookie_header
