@@ -23,7 +23,10 @@ def extract_cookies(headers: Mapping[str, str], domain: str) -> list[dict[str, s
         raw = headers["cookie"]
         jar = SimpleCookie()
         jar.load(raw)
-        cookies += [s | {"value": s["value"].value, "domain": s.get("domain") or domain} for s in SessionCookies(jar).get_cookies_as_dicts()]
+        cookies += [
+            s | {"value": s["value"].value, "domain": s.get("domain") or domain}
+            for s in SessionCookies(jar).get_cookies_as_dicts()
+        ]
 
     # Response cookies (usually multiple Set-Cookie headers, but we only have one string here)
     if "set-cookie" in headers:
@@ -35,5 +38,8 @@ def extract_cookies(headers: Mapping[str, str], domain: str) -> list[dict[str, s
         for part in parts:
             jar = SimpleCookie()
             jar.load(part)
-            cookies += [s | {"value": s["value"].value, "domain": s.get("domain") or domain} for s in SessionCookies(jar).get_cookies_as_dicts()]
+            cookies += [
+                s | {"value": s["value"].value, "domain": s.get("domain") or domain}
+                for s in SessionCookies(jar).get_cookies_as_dicts()
+            ]
     return cookies

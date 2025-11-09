@@ -92,6 +92,7 @@ async def save_cookies_for_http_client(
                 cookies_used.add(c["name"])
         context.session.user_data["cookies"] = new_cookies
 
+
 @after_handler
 async def save_user_info(
     storage: ScraperStorage,
