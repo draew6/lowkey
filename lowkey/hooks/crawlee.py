@@ -74,7 +74,7 @@ async def random_heartbeat(
 
 
 @after_handler
-async def save_cookies(
+async def save_cookies_for_http_client(
     context: ParsedHttpCrawlingContext,
 ):
     domain = urlparse(context.request.url).hostname
