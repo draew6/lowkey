@@ -18,13 +18,10 @@ class ScraperStorage:
         api_client: APIClient,
     ) -> None:
         bronze_catalog = Catalog(storage, storage, project_name, scraper_name, "bronze")
-        silver_catalog = Catalog(storage, storage, project_name, scraper_name, "silver")
         self.bronze = BronzeLayer(
             storage, project_name, scraper_name, run_id, identifier, bronze_catalog
         )
-        self.silver = SilverLayer(
-            storage, project_name, scraper_name, run_id, silver_catalog
-        )
+        self.silver = SilverLayer(storage, project_name, scraper_name, run_id)
         self.api_client = api_client
 
     async def start_run(
