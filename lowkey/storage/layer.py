@@ -16,14 +16,12 @@ class Layer(ABC):
         project_name: str,
         scraper_name: str,
         run_id: str,
-        catalog: Catalog,
     ) -> None:
         self.storage = storage
         self.project_name = project_name
         self.scraper_name = scraper_name
         self.run_id = run_id
         self.run_date = datetime.now(UTC)
-        self.catalog = catalog
 
     @staticmethod
     @abstractmethod
@@ -50,7 +48,6 @@ class Layer(ABC):
     async def _mark_run(self, status: str):
         key = f"{self._run_path}/_{status}"
         await self.storage.save(key, EMPTY_FILE)
-        await self.catalog.save(key)
 
     async def mark_run_as_failed(self) -> None:
         await self._mark_run("FAILED")
@@ -68,22 +65,19 @@ class Layer(ABC):
         run_info = json.dumps(dataclasses.asdict(RunInfo)).encode("utf-8")
         key = f"{self._run_path}/run.json"
         await self.storage.save(key, run_info)
-        await self.catalog.save(key)
 
     async def create_actor_info(self, actor: ScraperInfo | ParserInfo):
         # actor_info = str(actor.__dict__).encode()
         actor_info = json.dumps(dataclasses.asdict(actor)).encode("utf-8")
         key = f"{self._run_path}/actor.json"
         await self.storage.save(key, actor_info)
-        await self.catalog.save(key)
 
     async def heartbeat(self) -> None:
         key = f"{self._run_path}/heartbeats/{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.hb"
         await self.storage.save(key, EMPTY_FILE)
-        await self.catalog.save(key)
 
     async def load_run_files(self, pattern: str) -> list[File]:
-        file_names = await self.catalog.list_files(self.files_path, pattern)
+        file_names = await self.storage.list_files(self.files_path, pattern)
         return await self.storage.load_files(file_names)
 
     @classmethod
@@ -132,8 +126,9 @@ class BronzeLayer(Layer):
         identifier: str,
         catalog: Catalog,
     ) -> None:
-        super().__init__(storage, project_name, scraper_name, run_id, catalog)
+        super().__init__(storage, project_name, scraper_name, run_id)
         self.identifier = identifier
+        self.catalog = catalog
 
     @staticmethod
     def _create_scraper_path(project_name: str, scraper_name: str) -> str:
@@ -156,6 +151,36 @@ class BronzeLayer(Layer):
     @property
     def files_path(self) -> str:
         return f"{self._run_path}/artifacts"
+
+    async def _mark_run(self, status: str):
+        key = f"{self._run_path}/_{status}"
+        await self.storage.save(key, EMPTY_FILE)
+        await self.catalog.save(key)
+
+    async def create_run_info(
+        self,
+        RunInfo,
+    ):
+        run_info = json.dumps(dataclasses.asdict(RunInfo)).encode("utf-8")
+        key = f"{self._run_path}/run.json"
+        await self.storage.save(key, run_info)
+        await self.catalog.save(key)
+
+    async def create_actor_info(self, actor: ScraperInfo | ParserInfo):
+        # actor_info = str(actor.__dict__).encode()
+        actor_info = json.dumps(dataclasses.asdict(actor)).encode("utf-8")
+        key = f"{self._run_path}/actor.json"
+        await self.storage.save(key, actor_info)
+        await self.catalog.save(key)
+
+    async def heartbeat(self) -> None:
+        key = f"{self._run_path}/heartbeats/{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.hb"
+        await self.storage.save(key, EMPTY_FILE)
+        await self.catalog.save(key)
+
+    async def load_run_files(self, pattern: str) -> list[File]:
+        file_names = await self.catalog.list_files(self.files_path, pattern)
+        return await self.storage.load_files(file_names)
 
 
 class SilverLayer(Layer):
@@ -185,7 +210,6 @@ class SilverLayer(Layer):
     async def save(self, name: str, content: bytes) -> None:
         key = f"{self._run_path}/{name}"
         await self.storage.save(key, content)
-        await self.catalog.save(key)
 
     async def remove(self, name: str) -> None:
         key = f"{self._run_path}/{name}"
