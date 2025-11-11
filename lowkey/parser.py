@@ -38,9 +38,7 @@ class Parser:
         self.bronze_catalog = Catalog(
             input_storage, output_storage, project_name, scraper_name, "bronze"
         )
-        self.silver_catalog = Catalog(
-            input_storage, output_storage, project_name, scraper_name, "silver"
-        )
+
         self.bronze = BronzeLayer(
             input_storage,
             project_name,
@@ -49,9 +47,7 @@ class Parser:
             identifier,
             self.bronze_catalog,
         )
-        self.silver = SilverLayer(
-            output_storage, project_name, scraper_name, run_id, self.silver_catalog
-        )
+        self.silver = SilverLayer(output_storage, project_name, scraper_name, run_id)
         self.handler = handler
         self.run_info = run_info
 
