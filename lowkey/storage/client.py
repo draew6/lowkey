@@ -2,6 +2,7 @@ import glob
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import duckdb
 from miniopy_async import Minio
 import io
 import fnmatch
@@ -127,3 +128,87 @@ class MinioStorage(Storage):
 
     async def close(self) -> None:
         await self.client.close_session()
+
+
+class DuckLakeStorage(MinioStorage):
+    def __init__(
+        self,
+        minio_endpoint: str,
+        minio_access_key: str,
+        minio_secret_key: str,
+        minio_bucket_name: str,
+        duck_pg_host: str,
+        duck_pg_user: str,
+        duck_pg_password: str,
+        duck_pg_dbname: str,
+        table: str,
+    ):
+        super().__init__(
+            minio_endpoint, minio_access_key, minio_secret_key, minio_bucket_name
+        )
+
+        self.connection = self._load_duck_db(
+            minio_endpoint,
+            minio_access_key,
+            minio_secret_key,
+            minio_bucket_name,
+            duck_pg_host,
+            duck_pg_user,
+            duck_pg_password,
+            duck_pg_dbname,
+        )
+        self.table = table
+
+    @staticmethod
+    def _load_duck_db(
+        minio_endpoint: str,
+        minio_access_key: str,
+        minio_secret_key: str,
+        minio_bucket_name: str,
+        duck_pg_host: str,
+        duck_pg_user: str,
+        duck_pg_password: str,
+        duck_pg_dbname: str,
+    ):
+        con = duckdb.connect()
+        con.execute("INSTALL IF NOT EXISTS httpfs;")
+        con.execute("LOAD httpfs;")
+        con.execute("INSTALL IF NOT EXISTS ducklake;")
+        con.execute("LOAD ducklake;")
+        con.execute("INSTALL IF NOT EXISTS postgres;")
+        con.execute("LOAD postgres;")
+        con.execute(f"""
+        SET s3_endpoint = '{minio_endpoint}';
+        SET s3_access_key_id = '{minio_access_key}';
+        SET s3_secret_access_key = '{minio_secret_key}';
+        SET s3_url_style = 'path';  -- important for MinIO
+        SET s3_use_ssl = 'true';
+        """)
+        con.execute(f"""
+        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname}'
+          AS lake (DATA_PATH 's3://{minio_bucket_name}/');
+        USE lake;
+        """)
+
+        return con
+
+    def _query[T](self, query: str, result_type: T = dict) -> list[T]:
+        con = self.connection
+        cur = con.execute(query)
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
+        result = [result_type(**dict(zip(columns, row))) for row in rows]
+        return result
+
+    def add_file(self, key: str):
+        sql = f"CALL lake.add_data_files('lake', '{self.table}', '{key}');"
+        self.connection.execute(sql)
+
+    async def save(self, key: str, value: bytes) -> None:
+        assert key.endswith(".parquet"), "DuckLakeStorage only supports parquet files."
+        await super().save(key, value)
+        self.add_file(key)
+
+    async def close(self) -> None:
+        await super().close()
+        self.connection.close()
