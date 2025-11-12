@@ -8,7 +8,7 @@ from .storage import (
     ActorInfo,
     Catalog,
 )
-from .settings import ScraperSettings
+from .settings import ScraperSettings, ParserSettings
 from .models.user import User
 from .utils import generate_run_id
 from .errors import ParsingError
