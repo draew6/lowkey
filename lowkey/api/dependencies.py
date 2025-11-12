@@ -8,6 +8,7 @@ def get_scraper_settings():
     settings = ScraperSettings()
     return settings
 
+
 def get_parser_settings():
     settings = ParserSettings()
     return settings
