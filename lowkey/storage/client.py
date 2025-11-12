@@ -213,10 +213,33 @@ class DuckLakeStorage(MinioStorage):
         sql = f"CALL ducklake_add_data_files('lake', '{self.table}', '{self.prefix}{key}');"
         self.connection.execute(sql)
 
+    def _list_files(self):
+        sql = f"CALL ducklake_list_files('lake', '{self.table}');"
+        return self._query(sql)
+
     async def save(self, key: str, value: bytes) -> None:
         assert key.endswith(".parquet"), "DuckLakeStorage only supports parquet files."
         await super().save(key, value)
         self.add_file(key)
+
+    async def list_files(self, key: str, pattern: str, limit: int = None) -> list[str]:
+        file_names = [
+            file["data_file"].replace(self.prefix, "")
+            for file in self._list_files()
+            if file["data_file"].startswith(f"{self.prefix}{key}")
+        ]
+        prefix = key.lstrip("/")
+        names = []
+        counter = 0
+        for file_name in file_names:
+            rel = file_name[len(prefix) :].lstrip("/")
+            if fnmatch.fnmatch(rel, pattern):
+                names.append(file_name)
+                counter += 1
+            # page has 1000 items
+            if limit is not None and counter >= limit:
+                break
+        return names
 
     async def close(self) -> None:
         await super().close()
