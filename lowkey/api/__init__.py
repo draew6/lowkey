@@ -1,1 +1,1 @@
-from .dependencies import ScraperSettings, Storage
+from .dependencies import ScraperSettings, ParserSettings, Storage
