@@ -141,6 +141,7 @@ class DuckLakeStorage(MinioStorage):
         duck_pg_user: str,
         duck_pg_password: str,
         duck_pg_dbname: str,
+        duck_pg_port: str,
         table: str,
     ):
         super().__init__(
@@ -156,8 +157,10 @@ class DuckLakeStorage(MinioStorage):
             duck_pg_user,
             duck_pg_password,
             duck_pg_dbname,
+            duck_pg_port,
         )
         self.table = table
+        self.prefix = f"s3://{minio_bucket_name}/"
 
     @staticmethod
     def _load_duck_db(
@@ -169,24 +172,30 @@ class DuckLakeStorage(MinioStorage):
         duck_pg_user: str,
         duck_pg_password: str,
         duck_pg_dbname: str,
+        duck_pg_port: str,
     ):
         con = duckdb.connect()
-        con.execute("INSTALL IF NOT EXISTS httpfs;")
+        con.execute("INSTALL httpfs;")
         con.execute("LOAD httpfs;")
-        con.execute("INSTALL IF NOT EXISTS ducklake;")
+        con.execute("INSTALL ducklake;")
         con.execute("LOAD ducklake;")
-        con.execute("INSTALL IF NOT EXISTS postgres;")
+        con.execute("INSTALL postgres;")
         con.execute("LOAD postgres;")
+
         con.execute(f"""
-        SET s3_endpoint = '{minio_endpoint}';
-        SET s3_access_key_id = '{minio_access_key}';
-        SET s3_secret_access_key = '{minio_secret_key}';
-        SET s3_url_style = 'path';  -- important for MinIO
-        SET s3_use_ssl = 'true';
-        """)
+    CREATE OR REPLACE SECRET minio_env (
+      TYPE s3,
+      PROVIDER config,
+      KEY_ID '{minio_access_key}',
+      SECRET '{minio_secret_key}',
+      ENDPOINT '{minio_endpoint}',
+      URL_STYLE 'path',
+      USE_SSL true,
+      SCOPE 's3://{minio_bucket_name}/'
+    );
+    """)
         con.execute(f"""
-        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname}'
-          AS lake (DATA_PATH 's3://{minio_bucket_name}/');
+        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname} port={duck_pg_port}' AS lake (DATA_PATH 's3://{minio_bucket_name}/');
         USE lake;
         """)
 
@@ -201,7 +210,7 @@ class DuckLakeStorage(MinioStorage):
         return result
 
     def add_file(self, key: str):
-        sql = f"CALL lake.add_data_files('lake', '{self.table}', '{key}');"
+        sql = f"CALL ducklake_add_data_files('lake', '{self.table}', '{self.prefix}{key}');"
         self.connection.execute(sql)
 
     async def save(self, key: str, value: bytes) -> None:
