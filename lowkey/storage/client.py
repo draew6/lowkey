@@ -195,7 +195,7 @@ class DuckLakeStorage(MinioStorage):
     );
     """)
         con.execute(f"""
-        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname} port={duck_pg_port}' AS lake (DATA_PATH 's3://{minio_bucket_name}/');
+        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname} port={duck_pg_port}' AS lake (DATA_PATH 's3://{minio_bucket_name}/lake/');
         USE lake;
         """)
 
@@ -218,9 +218,9 @@ class DuckLakeStorage(MinioStorage):
         return self._query(sql)
 
     async def save(self, key: str, value: bytes) -> None:
-        assert key.endswith(".parquet"), "DuckLakeStorage only supports parquet files."
         await super().save(key, value)
-        self.add_file(key)
+        if key.endswith(".parquet"):
+            self.add_file(key)
 
     # async def list_files(self, key: str, pattern: str, limit: int = None) -> list[str]:
     #     file_names = [

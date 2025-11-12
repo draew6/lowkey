@@ -2,6 +2,7 @@ import inspect
 import math
 from io import BytesIO
 from typing import Callable, get_type_hints
+from . import generate_run_id
 from .storage import RunInfo
 from .storage.layer import SilverLayer, BronzeLayer
 from .storage.client import Storage
@@ -134,13 +135,13 @@ class Parser:
             end_index = start_index + batch_size
             batch_data = data[start_index:end_index]
             rows = [
-                item.model_dump() | {"source_run_id": run_id}
-                for run_id, item in batch_data
+                item.model_dump() | {"source_run_id": source_run_id}
+                for source_run_id, item in batch_data
             ]
             df = pd.DataFrame(rows)
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
-            file_name = f"{i + outer_index:06d}.parquet"
+            file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"
             await self.silver.save(file_name, buf.getvalue())
         return number_of_batches + outer_index
 
