@@ -9,10 +9,9 @@ from .storage.client import Storage
 from .storage.catalog import Catalog
 import zstandard as zstd
 import json
-import pandas as pd
 from pydantic import BaseModel
 from datetime import date
-
+from .conversion import models_to_dataframe
 
 HTMLFile = str
 JSONFile = dict
@@ -134,11 +133,9 @@ class Parser:
             start_index = i * batch_size
             end_index = start_index + batch_size
             batch_data = data[start_index:end_index]
-            rows = [
-                item.model_dump() | {"source_run_id": source_run_id}
-                for source_run_id, item in batch_data
-            ]
-            df = pd.DataFrame(rows)
+            models = [item for _, item in batch_data]
+            df = models_to_dataframe(models)
+            df["source_run_id"] = [source_run_id for source_run_id, _ in batch_data]
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
             file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"
