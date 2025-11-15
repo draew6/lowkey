@@ -115,12 +115,22 @@ class MinioStorage(Storage):
                 content = await resp.read()
             return File(name=object_name, content=content)
 
-        tasks = [get_one_file(file) for file in file_names]
-
-        if not tasks:
+        if not file_names:
             return []
 
-        results = await asyncio.gather(*tasks)
+        results: list[File] = []
+        BATCH_SIZE = 1000
+
+        for start in range(0, len(file_names), BATCH_SIZE):
+            batch = file_names[start : start + BATCH_SIZE]
+            tasks = [get_one_file(name) for name in batch]
+            batch_results = await asyncio.gather(*tasks)
+            results.extend(batch_results)
+
+            # Wait 1s between batches if more remain
+            if start + BATCH_SIZE < len(file_names):
+                await asyncio.sleep(1)
+
         return results
 
     async def delete(self, key: str) -> None:
