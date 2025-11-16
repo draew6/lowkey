@@ -152,7 +152,7 @@ class DuckLakeStorage(MinioStorage):
         duck_pg_password: str,
         duck_pg_dbname: str,
         duck_pg_port: str,
-        table: str,
+        table: str | None = None,
     ):
         super().__init__(
             minio_endpoint, minio_access_key, minio_secret_key, minio_bucket_name
@@ -220,10 +220,12 @@ class DuckLakeStorage(MinioStorage):
         return result
 
     def add_file(self, key: str):
+        assert self.table is not None, "Table name must be specified to add files."
         sql = f"CALL ducklake_add_data_files('lake', '{self.table}', '{self.prefix}{key}');"
         self.connection.execute(sql)
 
     def _list_files(self):
+        assert self.table is not None, "Table name must be specified to list files."
         sql = f"CALL ducklake_list_files('lake', '{self.table}');"
         return self._query(sql)
 
