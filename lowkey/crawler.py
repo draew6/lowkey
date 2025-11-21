@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Callable
 from crawlee.router import Router
 from crawlee import ConcurrencySettings
@@ -61,6 +62,7 @@ async def create_crawler(
             ),
             http_client=http_client,
             request_manager=request_manager,
+            request_handler_timeout=timedelta(minutes=5),
         )
     else:
         crawler = BeautifulSoupCrawler(
