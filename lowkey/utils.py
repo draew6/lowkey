@@ -1,3 +1,4 @@
+import asyncio
 import random
 import string
 from http.cookies import SimpleCookie
@@ -43,3 +44,7 @@ def extract_cookies(headers: Mapping[str, str], domain: str) -> list[dict[str, s
                 for s in SessionCookies(jar).get_cookies_as_dicts()
             ]
     return cookies
+
+async def random_sleep(seconds: float):
+    sleep_time = random.uniform(seconds / 2, seconds * 1.5)
+    await asyncio.sleep(sleep_time)

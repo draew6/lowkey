@@ -14,10 +14,9 @@ from .models.client import APIClient
 from .storage import ScraperStorage, Storage
 from .components.httpclient import HttpxHttpClient
 from .models.user import User
-import asyncio
-import random
 from .components.playwright import PlaywrightBrowserPlugin, BrowserPool
 from .components.context import BeautifulSoupCrawlingContext
+from .utils import random_sleep
 
 
 async def create_crawler(
@@ -110,8 +109,7 @@ async def create_crawler(
     @crawler.pre_navigation_hook
     async def wait_between_requests(context: BeautifulSoupCrawlingContext):
         wait_time = max(regen_time, int(wait_time_between_requests))
-        sleep_time = random.uniform(wait_time / 2, wait_time * 1.5)
-        await asyncio.sleep(sleep_time)
+        await random_sleep(wait_time)
 
     @crawler.router.handler("visit")
     async def visit_handler(context: BeautifulSoupCrawlingContext): ...
