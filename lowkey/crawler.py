@@ -60,7 +60,7 @@ async def create_crawler(
                 max_tasks_per_minute=60, desired_concurrency=1, max_concurrency=2
             ),
             request_manager=request_manager,
-            request_handler_timeout=timedelta(minutes=5),
+            request_handler_timeout=timedelta(minutes=15),
         )
     else:
         crawler = BeautifulSoupCrawler(
