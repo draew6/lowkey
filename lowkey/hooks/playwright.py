@@ -75,5 +75,3 @@ async def save_response_crawlee_metadata(
         await storage.bronze.save("response.crawlee.json", identifier_value, file)
 
     context.page.on("response", hook)
-
-
