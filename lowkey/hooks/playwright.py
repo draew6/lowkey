@@ -1,6 +1,6 @@
 from crawlee.crawlers import PlaywrightCrawlingContext
 from playwright.async_api import Response, Request
-from .decorators.before_handler import before_handler
+from .decorators import before_handler, after_handler
 import json
 from typing import Callable
 from ..storage import ScraperStorage
@@ -75,3 +75,22 @@ async def save_response_crawlee_metadata(
         await storage.bronze.save("response.crawlee.json", identifier_value, file)
 
     context.page.on("response", hook)
+
+
+@after_handler
+async def save_cookies_for_playwright(
+    context: PlaywrightCrawlingContext,
+):
+    cookies = await context.page.context.cookies()
+    if cookies:
+        new_cookies = []
+        cookies_used = set()
+        for c in cookies:
+            if c["name"] not in cookies_used:
+                new_cookies.append(c)
+                cookies_used.add(c["name"])
+        for c in context.session.user_data.get("cookies", []):
+            if c["name"] not in cookies_used:
+                new_cookies.append(c)
+                cookies_used.add(c["name"])
+        context.session.user_data["cookies"] = new_cookies

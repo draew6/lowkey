@@ -59,3 +59,6 @@ class ScraperStorage:
             await storage.bronze.mark_run_as_completed()
             await storage.bronze.storage.close()
             await storage.silver.storage.close()
+        users = crawler._session_pool.create_users_from_sessions()
+        await User.update_users(storages[0].api_client, users)
+        await crawler._request_manager.drop()
