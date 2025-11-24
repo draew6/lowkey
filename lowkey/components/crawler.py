@@ -1,5 +1,7 @@
 import asyncio
 import traceback
+import warnings
+from functools import partial
 from typing import Unpack, AsyncGenerator, cast
 from bs4 import BeautifulSoup, Tag
 from crawlee._request import RequestState
@@ -9,7 +11,10 @@ from crawlee.crawlers import (
     BeautifulSoupParserType,
     BasicCrawlerOptions,
     AbstractHttpCrawler,
+    PlaywrightPreNavCrawlingContext,
 )
+from crawlee.crawlers._playwright._playwright_http_client import browser_page_context
+from crawlee.crawlers._playwright._utils import infinite_scroll, block_requests
 from crawlee.errors import (
     ContextPipelineInitializationError,
     ContextPipelineInterruptedError,
@@ -22,8 +27,12 @@ from .context import (
     BeautifulSoupCrawlingContext,
     ParsedHttpCrawlingContext,
     BasicCrawlingContext,
+    PlaywrightCrawlingContext,
 )
 from crawlee.crawlers._beautifulsoup._beautifulsoup_parser import BeautifulSoupParser
+from crawlee.crawlers._playwright._playwright_crawler import (
+    PlaywrightCrawler as OldPlaywrightCrawler,
+)
 
 
 class BeautifulSoupCrawler(
@@ -220,3 +229,93 @@ class BeautifulSoupCrawler(
                 exc_info=internal_error,
             )
             raise
+
+
+class PlaywrightCrawler(OldPlaywrightCrawler):
+    async def _navigate(
+        self,
+        context: PlaywrightPreNavCrawlingContext,
+    ) -> AsyncGenerator[PlaywrightCrawlingContext, Exception | None]:
+        """Execute an HTTP request utilizing the `BrowserPool` and the `Playwright` library.
+
+        Args:
+            context: The basic crawling context to be enhanced.
+
+        Raises:
+            ValueError: If the browser pool is not initialized.
+            SessionError: If the URL cannot be loaded by the browser.
+
+        Yields:
+            The enhanced crawling context with the Playwright-specific features (page, response, enqueue_links,
+                infinite_scroll and block_requests).
+        """
+        async with context.page:
+            if context.session:
+                session_cookies = (
+                    context.session.cookies.get_cookies_as_playwright_format()
+                )
+                await self._update_cookies(context.page, session_cookies)
+
+            if context.request.headers:
+                await context.page.set_extra_http_headers(
+                    context.request.headers.model_dump()
+                )
+            # Navigate to the URL and get response.
+            if context.request.method != "GET":
+                # Call the notification only once
+                warnings.warn(
+                    "Using other request methods than GET or adding payloads has a high impact on performance"
+                    " in recent versions of Playwright. Use only when necessary.",
+                    category=UserWarning,
+                    stacklevel=2,
+                )
+
+                route_handler = self._prepare_request_interceptor(
+                    method=context.request.method,
+                    headers=context.request.headers,
+                    payload=context.request.payload,
+                )
+
+                # Set route_handler only for current request
+                await context.page.route(context.request.url, route_handler)
+
+            response = await context.page.goto(context.request.url)
+
+            if response is None:
+                raise SessionError(f"Failed to load the URL: {context.request.url}")
+
+            # Set the loaded URL to the actual URL after redirection.
+            context.request.loaded_url = context.page.url
+
+            extract_links = self._create_extract_links_function(context)
+
+            async with browser_page_context(context.page):
+                error = yield PlaywrightCrawlingContext(
+                    request=context.request,
+                    session=context.session,
+                    add_requests=context.add_requests,
+                    send_request=context.send_request,
+                    push_data=context.push_data,
+                    use_state=context.use_state,
+                    proxy_info=context.proxy_info,
+                    get_key_value_store=context.get_key_value_store,
+                    log=context.log,
+                    page=context.page,
+                    infinite_scroll=lambda: infinite_scroll(context.page),
+                    response=response,
+                    extract_links=extract_links,
+                    enqueue_links=self._create_enqueue_links_function(
+                        context, extract_links
+                    ),
+                    block_requests=partial(block_requests, page=context.page),
+                )
+
+            if context.session:
+                pw_cookies = await self._get_cookies(context.page)
+                context.session.cookies.set_cookies_from_playwright_format(pw_cookies)
+
+            # Collect data in case of errors, before the page object is closed.
+            if error:
+                await self.statistics.error_tracker.add(
+                    error=error, context=context, early=True
+                )
