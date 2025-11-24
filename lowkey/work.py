@@ -74,6 +74,7 @@ async def get_crawler(
     wait_time_between_requests: float = 3.0,
     regen_time: int = 3,
     is_browser: bool = False,
+    debug: bool = False,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     crawler, scraper_storage, router = await create_crawler(
         project_name,
@@ -88,6 +89,7 @@ async def get_crawler(
         wait_time_between_requests,
         regen_time,
         is_browser,
+        debug,
     )
     requests = create_requests(work, before_start_urls, users, handler_name)
     await crawler.add_requests(requests=requests)

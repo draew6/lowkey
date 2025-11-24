@@ -32,6 +32,7 @@ async def create_crawler(
     wait_time_between_requests: float = 3,
     regen_time: int = 3,
     is_browser: bool = False,
+    debug: bool = False,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     session_pool = SessionPool(
         users=users, persistence_enabled=False, regen_time=regen_time
@@ -50,7 +51,9 @@ async def create_crawler(
     router = Router[BeautifulSoupCrawlingContext]()
 
     if is_browser:
-        plugin = PlaywrightBrowserPlugin.with_user_fingerprints(users)
+        plugin = PlaywrightBrowserPlugin.with_user_fingerprints(
+            users, headless=not debug
+        )
         crawler = PlaywrightCrawler(
             browser_pool=BrowserPool(plugins=[plugin]),
             request_handler=router,

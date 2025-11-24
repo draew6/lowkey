@@ -107,7 +107,9 @@ class PlaywrightBrowserPlugin(OldPlaywrightBrowserPlugin):
         return new_controller
 
     @classmethod
-    def with_user_fingerprints(cls, users: list[User]) -> "PlaywrightBrowserPlugin":
+    def with_user_fingerprints(
+        cls, users: list[User], headless: bool
+    ) -> "PlaywrightBrowserPlugin":
         fingerprint_mapping = {}
         for user in users:
             data = user.fingerprint
@@ -120,7 +122,7 @@ class PlaywrightBrowserPlugin(OldPlaywrightBrowserPlugin):
         return cls(
             browser_type="chromium",
             fingerprint_mapping=fingerprint_mapping,
-            browser_launch_options={"headless": False},
+            browser_launch_options={"headless": headless},
         )
 
 
