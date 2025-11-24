@@ -80,21 +80,17 @@ async def create_crawler(
         context.log.debug(f"Applying UA for {context.session.id}: {ua}")
         context.request.headers = context.request.headers | {"User-Agent": ua}
 
-    if not is_browser:
-
-        @crawler.pre_navigation_hook
-        async def apply_cookies(context: BeautifulSoupCrawlingContext):
-            cookies = context.session.user_data.get("cookies")
-            if cookies:
-                context.log.debug(
-                    f"Applying cookies for {context.session.id}: {cookies}"
-                )
-                cookie_header = "; ".join(
-                    [f"{cookie['name']}={cookie['value']}" for cookie in cookies]
-                )
-                context.request.headers = context.request.headers | {
-                    "Cookie": cookie_header
-                }
+    @crawler.pre_navigation_hook
+    async def apply_cookies(context: BeautifulSoupCrawlingContext):
+        cookies = context.session.user_data.get("cookies")
+        if cookies:
+            context.log.debug(f"Applying cookies for {context.session.id}: {cookies}")
+            cookie_header = "; ".join(
+                [f"{cookie['name']}={cookie['value']}" for cookie in cookies]
+            )
+            context.request.headers = context.request.headers | {
+                "Cookie": cookie_header
+            }
 
     @crawler.pre_navigation_hook
     async def pass_user_phase_for_httpx(context: BeautifulSoupCrawlingContext):

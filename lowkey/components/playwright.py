@@ -57,7 +57,9 @@ class PlaywrightBrowserController(OldPlaywrightBrowserController):
         if browser_new_context_options is None:
             browser_new_context_options = {}
 
-        fingerprint = self.get_fingerprint(proxy_info.session_id) if proxy_info else None
+        fingerprint = (
+            self.get_fingerprint(proxy_info.session_id) if proxy_info else None
+        )
 
         return await AsyncNewContext(
             browser=self._browser,
@@ -95,7 +97,7 @@ class PlaywrightBrowserPlugin(OldPlaywrightBrowserPlugin):
     async def new_browser(self) -> PlaywrightBrowserController:
         controller = await super().new_browser()
         new_controller = PlaywrightBrowserController(
-            controller._browser, # noqa W0212
+            controller._browser,  # noqa W0212
             use_incognito_pages=self._use_incognito_pages,
             max_open_pages_per_browser=self._max_open_pages_per_browser,
             fingerprint_generator=self._fingerprint_generator,
