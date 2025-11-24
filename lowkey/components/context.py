@@ -3,6 +3,7 @@ from crawlee.crawlers import (
     ParsedHttpCrawlingContext as OldParsedHttpCrawlingContext,
     BeautifulSoupCrawlingContext as OldBeautifulSoupCrawlingContext,
     BasicCrawlingContext as OldBasicCrawlingContext,
+    PlaywrightCrawlingContext as OldPlaywrightCrawlingContext,
 )
 from .session import Session
 
@@ -41,3 +42,22 @@ class BeautifulSoupCrawlingContext(
 
 class BasicCrawlingContext(_DiscoveryContextMixin, OldBasicCrawlingContext):
     session: Session
+
+
+class PlaywrightCrawlingContext(OldPlaywrightCrawlingContext):
+    async def spa_navigate(self, url: str) -> None:
+        """Navigates to the specified URL in a Single Page Application (SPA) context.
+
+        This method uses client-side navigation to change the URL without reloading the entire page.
+        It is particularly useful for SPAs where traditional navigation methods may not work as expected.
+
+        Args:
+            url (str): The URL to navigate to.
+        """
+        await self.page.evaluate(
+            """(url) => {
+                history.pushState({}, "", url);
+                window.dispatchEvent(new Event('popstate'));
+            }""",
+            url,
+        )

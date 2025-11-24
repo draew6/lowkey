@@ -1,4 +1,4 @@
-from crawlee.crawlers import PlaywrightCrawlingContext
+from ..components.context import PlaywrightCrawlingContext
 from playwright.async_api import Response, Request
 from .decorators import before_handler, after_handler
 import json
