@@ -92,7 +92,7 @@ class Catalog:
         except IOException:
             json_file_names = []
         names = []
-        for name in parquet_file_names + json_file_names:
+        for name in list(set(parquet_file_names + json_file_names)):
             rel = name[len(prefix) :].lstrip("/")
             if fnmatch.fnmatch(rel, pattern):
                 names.append(name)
