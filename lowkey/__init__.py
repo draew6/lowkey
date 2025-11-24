@@ -13,4 +13,4 @@ from .models.user import User
 from .utils import generate_run_id
 from .errors import ParsingError
 from .parser import Parser, HTMLFile, JSONFile
-from .components.context import BeautifulSoupCrawlingContext, ParsedHttpCrawlingContext
+from .components.context import BeautifulSoupCrawlingContext, ParsedHttpCrawlingContext, PlaywrightCrawlingContext
