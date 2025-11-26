@@ -122,7 +122,7 @@ class PlaywrightBrowserPlugin(OldPlaywrightBrowserPlugin):
         return cls(
             browser_type="chromium",
             fingerprint_mapping=fingerprint_mapping,
-            browser_launch_options={"headless": headless},
+            browser_launch_options={"headless": headless, "args": ["--no-sandbox"]},
         )
 
 
