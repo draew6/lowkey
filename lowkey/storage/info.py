@@ -69,7 +69,7 @@ class RunInfo:
     def get_info(cls, requested_by: str, actor_name: str):
         return cls(
             requested_by=requested_by,
-            requested_at=datetime.now(UTC).isoformat(),
+            requested_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
             actor_name=actor_name,
             git_commit=get_git_commit(),
         )
