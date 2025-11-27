@@ -5,9 +5,7 @@ from crawlee import ConcurrencySettings
 from crawlee.storages import RequestQueue
 from .components.session import SessionPool
 from .components.proxyconfig import ProxyConfiguration
-from crawlee.crawlers import (
-    PlaywrightCrawler,
-)
+from .components.crawler import PlaywrightCrawler
 from .components.crawler import BeautifulSoupCrawler
 from .hooks.httpx import make_save_request_curl
 from .models.client import APIClient
