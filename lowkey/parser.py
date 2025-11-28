@@ -20,7 +20,7 @@ DataWithRunId = list[tuple[str, BaseModel]]
 
 RawFile = HTMLFile | JSONFile
 RawData = list[RawFile]
-RawDataWithRunIdAndInfo = list[tuple[str, RunInfo, RawFile]]
+RawDataWithRunIdAndInfo = list[tuple[str, RunInfo, RawFile, str]]
 
 
 class Parser:
@@ -81,19 +81,19 @@ class Parser:
         files = await self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [
-            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content))
+            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content), file.name)
             for file in files
         ]
 
         if input_type is HTMLFile:
             return [
-                (run_id, run_infos[run_id], file.decode("utf-8"))
-                for run_id, file in decompressed_files
+                (run_id, run_infos[run_id], file.decode("utf-8"), name)
+                for run_id, file, name in decompressed_files
             ]
         elif input_type is JSONFile:
             return [
-                (run_id, run_infos[run_id], json.loads(file.decode("utf-8")))
-                for run_id, file in decompressed_files
+                (run_id, run_infos[run_id], json.loads(file.decode("utf-8")), name)
+                for run_id, file, name in decompressed_files
             ]
         else:
             raise ValueError("Unsupported handler input type")
@@ -111,12 +111,13 @@ class Parser:
         type_hints = get_type_hints(self.handler)
 
         # Iterate and call handler with the same kwargs
-        for run_id, run_info, raw_file in raw_data:
+        for run_id, run_info, raw_file, name in raw_data:
             # Prepare kwargs only if handler expects a RunInfo
 
             kwargs = {}
             if "run_info" in sig.parameters and type_hints.get("run_info") is RunInfo:
                 kwargs["run_info"] = run_info
+                kwargs["file_name"] = name
             parsed_data = self.handler(raw_file, **kwargs)
             results.extend([(run_id, pdt) for pdt in parsed_data])
 
