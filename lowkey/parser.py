@@ -109,15 +109,19 @@ class Parser:
         # Inspect handler once
         sig = inspect.signature(self.handler)
         type_hints = get_type_hints(self.handler)
-
+        allowed_param_names = sig.parameters.keys()
         # Iterate and call handler with the same kwargs
         for run_id, run_info, raw_file, name in raw_data:
             # Prepare kwargs only if handler expects a RunInfo
-
-            kwargs = {}
-            if "run_info" in sig.parameters and type_hints.get("run_info") is RunInfo:
-                kwargs["run_info"] = run_info
-                kwargs["file_name"] = name
+            context = {
+                "run_info": run_info,
+                "file_name": name,
+            }
+            kwargs = {
+                name: value
+                for name, value in context.items()
+                if name in allowed_param_names
+            }
             parsed_data = self.handler(raw_file, **kwargs)
             results.extend([(run_id, pdt) for pdt in parsed_data])
 
