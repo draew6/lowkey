@@ -81,7 +81,11 @@ class Parser:
         files = await self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
         decompressed_files = [
-            (file.name.split("run=")[1].split("/")[0], dctx.decompress(file.content), file.name)
+            (
+                file.name.split("run=")[1].split("/")[0],
+                dctx.decompress(file.content),
+                file.name,
+            )
             for file in files
         ]
 

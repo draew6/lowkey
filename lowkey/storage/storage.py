@@ -24,7 +24,7 @@ class ScraperStorage:
         self.silver = SilverLayer(storage, project_name, scraper_name, run_id)
         self.api_client = api_client
 
-    async def start_run(
+    async def _start_run(
         self,
         crawler: BeautifulSoupCrawler | PlaywrightCrawler,
         run_info: RunInfo,
@@ -34,14 +34,21 @@ class ScraperStorage:
         await self.bronze.create_actor_info(actor_info)
         await self.bronze.mark_run_as_started()
         await crawler.run()
-        await self.bronze.mark_run_as_completed()
-
-        await self.bronze.storage.close()
-        await self.silver.storage.close()
-        # TODO: ak session je vylučena z poolu, tak dostanem ju tu aby som ju mohol updatnut?
         users = crawler._session_pool.create_users_from_sessions()
         await User.update_users(self.api_client, users)
         await crawler._request_manager.drop()
+
+    async def start_run(
+        self,
+        crawler: BeautifulSoupCrawler | PlaywrightCrawler,
+        run_info: RunInfo,
+        actor_info: ScraperInfo,
+    ):
+        await self._start_run(crawler, run_info, actor_info)
+        await self.bronze.mark_run_as_completed()
+        await self.bronze.storage.close()
+        await self.silver.storage.close()
+        # TODO: ak session je vylučena z poolu, tak dostanem ju tu aby som ju mohol updatnut?
 
     @staticmethod
     async def start_run_for_multiple(
