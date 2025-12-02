@@ -103,6 +103,10 @@ async def create_crawler(
         }
 
     @crawler.pre_navigation_hook
+    async def handle_action(context: BeautifulSoupCrawlingContext):
+        context.process_request()
+
+    @crawler.pre_navigation_hook
     async def wait_between_requests(context: BeautifulSoupCrawlingContext):
         wait_time = max(regen_time, int(wait_time_between_requests))
         await random_sleep(wait_time)

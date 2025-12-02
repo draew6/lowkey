@@ -16,7 +16,7 @@ async def save_raw_html(
     context: ParsedHttpCrawlingContext,
 ):
     """Saves the raw HTML response to storage."""
-    if context.is_in_discovery_phase:
+    if context.is_in_discovery_phase or context.should_ignore:
         return
     url = context.request.url
     identifier_value = identifier_value_fn(url)
@@ -32,6 +32,8 @@ async def save_request_crawlee_metadata(
     identifier_value_fn: Callable[[str], str],
     context: ParsedHttpCrawlingContext,
 ):
+    if context.should_ignore:
+        return
     request_dict = context.request.model_dump()
     session_dict = context.session.get_state(as_dict=True)
     file_dict = {
@@ -49,6 +51,8 @@ async def save_response_crawlee_metadata(
     identifier_value_fn: Callable[[str], str],
     context: ParsedHttpCrawlingContext,
 ):
+    if context.should_ignore:
+        return
     response = context.http_response
     request = context.request
     response_meta = {
@@ -99,6 +103,8 @@ async def save_user_info(
     identifier_value_fn: Callable[[str], str],
     context: ParsedHttpCrawlingContext,
 ):
+    if context.should_ignore:
+        return
     proxy = context.session.user_data.get("proxy_url")
     user_id = context.session.id.replace("session-", "")
     user = {
