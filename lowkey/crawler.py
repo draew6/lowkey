@@ -31,6 +31,7 @@ async def create_crawler(
     regen_time: int = 3,
     is_browser: bool = False,
     debug: bool = False,
+    follow_redirects: bool = True,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     session_pool = SessionPool(
         users=users, persistence_enabled=False, regen_time=regen_time

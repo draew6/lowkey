@@ -30,7 +30,7 @@ class HttpxHttpClient(OriginalHttpxHttpClient):
         self.event_hooks["request"].insert(0, extract_phase)
 
     @classmethod
-    def get_client_with_hooks(cls, hooks: list = None):
-        client = cls()
+    def get_client_with_hooks(cls, hooks: list = None, follow_redirects: bool = True):
+        client = cls(follow_redirects=follow_redirects)
         client.add_hooks(request_hooks=hooks)
         return client
