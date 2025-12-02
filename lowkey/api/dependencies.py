@@ -1,8 +1,7 @@
 from typing import Annotated
-from .. import FilesystemStorage
 from ..settings import ScraperSettings, ParserSettings
 from fastapi import Depends
-from ..storage import MinioStorage
+from ..storage import MinioStorage, FilesystemStorage, Storage as BaseStorage
 
 
 def get_scraper_settings():
@@ -29,6 +28,6 @@ def get_storage():
     return storage
 
 
-Storage = Annotated[MinioStorage, Depends(get_storage)]
+Storage = Annotated[BaseStorage, Depends(get_storage)]
 ScraperSettings = Annotated[ScraperSettings, Depends(get_scraper_settings)]
 ParserSettings = Annotated[ParserSettings, Depends(get_parser_settings)]
