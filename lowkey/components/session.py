@@ -27,24 +27,6 @@ class Session(OriginalSession):
         """Turn the session to discovery phase."""
         self.user_data["phase"] = "DISCOVERY"
 
-    def ignore_request(self) -> None:
-        """Mark the session to ignore the current request."""
-        self.user_data["action"] = "IGNORE"
-
-    def process_request(self) -> None:
-        """Mark the session to process the current request."""
-        self.user_data["action"] = "PROCESS"
-
-    @property
-    def should_ignore(self) -> bool:
-        """Check if the session is marked to ignore the current request."""
-        return self.action == "IGNORE"
-
-    @property
-    def action(self) -> Literal["IGNORE", "PROCESS"]:
-        """Get the current action for the session."""
-        return self.user_data.get("action", "PROCESS")
-
     @property
     def phase(self) -> Literal["DISCOVERY", "FINAL"]:
         """Get the current phase of the session."""

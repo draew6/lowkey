@@ -28,42 +28,19 @@ class _DiscoveryContextMixin:
         return self.session.phase
 
 
-class _ActionContextMixin:
-    session: Session
-
-    def ignore_request(self) -> None:
-        self.session.ignore_request()
-
-    def process_request(self) -> None:
-        self.session.process_request()
-
-    @property
-    def action(self) -> Literal["IGNORE", "PROCESS"]:
-        return self.action
-
-    @property
-    def should_ignore(self) -> bool:
-        return self.session.should_ignore
-
-
 class ParsedHttpCrawlingContext(
-    _DiscoveryContextMixin,
-    _ActionContextMixin,
-    OldParsedHttpCrawlingContext,
-    Generic[TParseResult],
+    _DiscoveryContextMixin, OldParsedHttpCrawlingContext, Generic[TParseResult]
 ):
     session: Session
 
 
 class BeautifulSoupCrawlingContext(
-    _DiscoveryContextMixin, _ActionContextMixin, OldBeautifulSoupCrawlingContext
+    _DiscoveryContextMixin, OldBeautifulSoupCrawlingContext
 ):
     session: Session
 
 
-class BasicCrawlingContext(
-    _DiscoveryContextMixin, _ActionContextMixin, OldBasicCrawlingContext
-):
+class BasicCrawlingContext(_DiscoveryContextMixin, OldBasicCrawlingContext):
     session: Session
 
 
