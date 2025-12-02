@@ -1,4 +1,5 @@
 from typing import Annotated
+from .. import FilesystemStorage
 from ..settings import ScraperSettings, ParserSettings
 from fastapi import Depends
 from ..storage import MinioStorage
@@ -16,12 +17,15 @@ def get_parser_settings():
 
 def get_storage():
     settings = get_scraper_settings()
-    storage = MinioStorage(
-        settings.minio_endpoint,
-        settings.minio_access_key,
-        settings.minio_secret_key,
-        settings.minio_bucket_name,
-    )
+    if settings.storage_type == "local":
+        storage = FilesystemStorage(base_path="./minio")
+    else:
+        storage = MinioStorage(
+            settings.minio_endpoint,
+            settings.minio_access_key,
+            settings.minio_secret_key,
+            settings.minio_bucket_name,
+        )
     return storage
 
 
