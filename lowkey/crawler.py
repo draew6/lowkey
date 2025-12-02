@@ -43,7 +43,7 @@ async def create_crawler(
     http_client = HttpxHttpClient.get_client_with_hooks(
         [make_save_request_curl(scraper_storage, identifier_value_fn)]
         if save_request
-        else None
+        else None, follow_redirects=follow_redirects
     )
     request_manager = await RequestQueue.open(name=run_id)
 
