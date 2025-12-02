@@ -104,7 +104,7 @@ async def create_crawler(
 
     @crawler.pre_navigation_hook
     async def handle_action(context: BeautifulSoupCrawlingContext):
-        context.request.user_data["action"] = "PROCESS"
+        context.process_request()
 
     @crawler.pre_navigation_hook
     async def wait_between_requests(context: BeautifulSoupCrawlingContext):
