@@ -32,6 +32,7 @@ async def create_crawler(
     is_browser: bool = False,
     debug: bool = False,
     follow_redirects: bool = True,
+    ignore_http_error_status_codes: list[int] | None = None,
 ) -> tuple[BeautifulSoupCrawler, ScraperStorage, Router[BeautifulSoupCrawlingContext]]:
     session_pool = SessionPool(
         users=users, persistence_enabled=False, regen_time=regen_time
@@ -74,6 +75,7 @@ async def create_crawler(
             ),
             http_client=http_client,
             request_manager=request_manager,
+            ignore_http_error_status_codes=ignore_http_error_status_codes
         )
 
     @crawler.pre_navigation_hook
