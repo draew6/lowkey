@@ -29,8 +29,8 @@ def create_requests(
     handler_name: str | None,
 ):
     requests = []
-    for user in users:
-        for url in before_start_urls:
+    for url in before_start_urls:
+        for user in users:
             request = Request.from_url(
                 url=url,
                 method="GET",
