@@ -113,7 +113,9 @@ class Catalog:
             )
             if not file_names_batch:
                 break
-            files_batch = await self.output_storage.load_files(file_names_batch)
+            files_batch = [
+                file async for file in self.output_storage.load_files(file_names_batch)
+            ]
             rows = [json.loads(file.content.decode("utf-8")) for file in files_batch]
             df = pd.DataFrame(rows)
             buf = BytesIO()

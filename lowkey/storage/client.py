@@ -2,6 +2,7 @@ import glob
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import AsyncIterator
 import duckdb
 from miniopy_async import Minio
 import io
@@ -20,7 +21,7 @@ class Storage(ABC):
     async def save(self, key: str, value: bytes) -> None: ...
 
     @abstractmethod
-    async def load_files(self, file_names: list[str]) -> list[File]: ...
+    async def load_files(self, file_names: list[str]) -> AsyncIterator[File]: ...
 
     @abstractmethod
     async def close(self) -> None: ...
@@ -52,13 +53,10 @@ class FilesystemStorage(Storage):
             return files[:limit]
         return files
 
-    async def load_files(self, file_names: list[str]) -> list[File]:
-        data: list[File] = []
+    async def load_files(self, file_names: list[str]) -> AsyncIterator[File]:
         for file in file_names:
             with open(file, "rb") as f:
-                data.append(File(name=file, content=f.read()))
-
-        return data
+                yield File(name=file, content=f.read())
 
     async def delete(self, key: str) -> None:
         path = os.path.join(self.base_path, key)
@@ -107,7 +105,7 @@ class MinioStorage(Storage):
                 break
         return names
 
-    async def load_files(self, file_names: list[str]) -> list[File]:
+    async def load_files(self, file_names: list[str]) -> AsyncIterator[File]:
         async def get_one_file(object_name: str) -> File:
             async with await self.client.get_object(
                 self.bucket_name, object_name
@@ -116,22 +114,21 @@ class MinioStorage(Storage):
             return File(name=object_name, content=content)
 
         if not file_names:
-            return []
+            return
 
-        results: list[File] = []
         BATCH_SIZE = 1000
 
         for start in range(0, len(file_names), BATCH_SIZE):
             batch = file_names[start : start + BATCH_SIZE]
             tasks = [get_one_file(name) for name in batch]
-            batch_results = await asyncio.gather(*tasks)
-            results.extend(batch_results)
+            # Yield as soon as each task finishes (fastest-first)
+            for coro in asyncio.as_completed(tasks):
+                file = await coro
+                yield file
 
             # Wait 1s between batches if more remain
             if start + BATCH_SIZE < len(file_names):
                 await asyncio.sleep(1)
-
-        return results
 
     async def delete(self, key: str) -> None:
         await self.client.remove_object(self.bucket_name, key)

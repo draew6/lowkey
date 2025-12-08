@@ -1,7 +1,7 @@
 import inspect
 import math
 from io import BytesIO
-from typing import Callable, get_type_hints
+from typing import Callable, get_type_hints, AsyncIterator
 from . import generate_run_id
 from .storage import RunInfo
 from .storage.layer import SilverLayer, BronzeLayer
@@ -64,7 +64,9 @@ class Parser:
 
     async def _get_run_info_files(self, key: str) -> dict[str, RunInfo]:
         run_info_file_names = await self.bronze_catalog.list_files(key, "*run.json")
-        run_info_files = await self.bronze.storage.load_files(run_info_file_names)
+        run_info_files = [
+            file async for file in self.bronze.storage.load_files(run_info_file_names)
+        ]
         run_infos = {
             file.name.split("run=")[1].split("/")[0]: RunInfo(
                 **json.loads(file.content.decode("utf-8"))
@@ -75,37 +77,37 @@ class Parser:
 
     async def load_input_files(
         self, key: str, run_infos: dict[str, RunInfo]
-    ) -> RawDataWithRunIdAndInfo:
+    ) -> AsyncIterator[tuple[str, RunInfo, RawFile, str]]:
         input_type = self.detect_file_type()
         file_names = await self.bronze_catalog.list_files(key, "*.zst")
-        files = await self.bronze.storage.load_files(file_names)
+        files = self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
-        decompressed_files = [
-            (
-                file.name.split("run=")[1].split("/")[0],
-                dctx.decompress(file.content),
-                file.name,
-            )
-            for file in files
-        ]
+        async for file in files:
+            decompressed_file = dctx.decompress(file.content)
+            run_id = file.name.split("run=")[1].split("/")[0]
+            if input_type is HTMLFile:
+                yield (
+                    run_id,
+                    run_infos[run_id],
+                    decompressed_file.decode("utf-8"),
+                    file.name,
+                )
+            elif input_type is JSONFile:
+                yield (
+                    run_id,
+                    run_infos[run_id],
+                    json.loads(decompressed_file.decode("utf-8")),
+                    file.name,
+                )
+            else:
+                raise ValueError("Unsupported handler input type")
 
-        if input_type is HTMLFile:
-            return [
-                (run_id, run_infos[run_id], file.decode("utf-8"), name)
-                for run_id, file, name in decompressed_files
-            ]
-        elif input_type is JSONFile:
-            return [
-                (run_id, run_infos[run_id], json.loads(file.decode("utf-8")), name)
-                for run_id, file, name in decompressed_files
-            ]
-        else:
-            raise ValueError("Unsupported handler input type")
-
-    async def load_run_input_files(self) -> RawDataWithRunIdAndInfo:
+    async def load_run_input_files(
+        self,
+    ) -> AsyncIterator[tuple[str, RunInfo, RawFile, str]]:
         run_infos = await self._get_run_info_files(self.bronze._run_path)
-        files = await self.load_input_files(self.bronze.files_path, run_infos)
-        return files
+        async for file in self.load_input_files(self.bronze.files_path, run_infos):
+            yield file
 
     async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunId:
         results = []
@@ -180,19 +182,25 @@ class Parser:
         if full_run:
             scraper_name = BronzeLayer._create_scraper_path(project_name, scraper_name)
             run_infos = await parser._get_run_info_files(scraper_name)
-            raw_data = await parser.load_input_files(scraper_name, run_infos)
+            raw_data = parser.load_input_files(scraper_name, run_infos)
         elif date_filter:
             scraper_name = f"{BronzeLayer._create_scraper_path(project_name, scraper_name)}/{date_filter.strftime('%Y/%m/%d')}"
             run_infos = await parser._get_run_info_files(scraper_name)
-            raw_data = await parser.load_input_files(scraper_name, run_infos)
+            raw_data = parser.load_input_files(scraper_name, run_infos)
         else:
-            raw_data = await parser.load_run_input_files()
+            raw_data = parser.load_run_input_files()
 
         try:
-            if not raw_data:
+            empty = True
+            parsed_data = []
+            async for raw_d in raw_data:
+                empty = False
+                parser_d = await parser.parse([raw_d])
+                parsed_data.extend(parser_d)
+
+            if empty:
                 raise ValueError("No input files found to parse.")
 
-            parsed_data = await parser.parse(raw_data)
             await parser.save(parsed_data)
             await parser.silver.mark_run_as_completed()
 

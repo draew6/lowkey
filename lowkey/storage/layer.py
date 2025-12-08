@@ -78,7 +78,7 @@ class Layer(ABC):
 
     async def load_run_files(self, pattern: str) -> list[File]:
         file_names = await self.storage.list_files(self.files_path, pattern)
-        return await self.storage.load_files(file_names)
+        return [file async for file in self.storage.load_files(file_names)]
 
     @classmethod
     async def list_run_ids(
@@ -180,7 +180,7 @@ class BronzeLayer(Layer):
 
     async def load_run_files(self, pattern: str) -> list[File]:
         file_names = await self.catalog.list_files(self.files_path, pattern)
-        return await self.storage.load_files(file_names)
+        return [file async for file in self.storage.load_files(file_names)]
 
 
 class SilverLayer(Layer):
