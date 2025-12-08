@@ -44,7 +44,8 @@ async def create_crawler(
     http_client = HttpxHttpClient.get_client_with_hooks(
         [make_save_request_curl(scraper_storage, identifier_value_fn)]
         if save_request
-        else None, follow_redirects=follow_redirects
+        else None,
+        follow_redirects=follow_redirects,
     )
     request_manager = await RequestQueue.open(name=run_id)
 
@@ -60,7 +61,9 @@ async def create_crawler(
             session_pool=session_pool,
             proxy_configuration=proxy_configuration,
             concurrency_settings=ConcurrencySettings(
-                max_tasks_per_minute=60, desired_concurrency=1, max_concurrency=min(2, len(users))
+                max_tasks_per_minute=60,
+                desired_concurrency=1,
+                max_concurrency=min(2, len(users)),
             ),
             request_manager=request_manager,
             request_handler_timeout=timedelta(minutes=15),
@@ -71,11 +74,13 @@ async def create_crawler(
             session_pool=session_pool,
             proxy_configuration=proxy_configuration,
             concurrency_settings=ConcurrencySettings(
-                max_tasks_per_minute=60, desired_concurrency=1, max_concurrency=min(2, len(users))
+                max_tasks_per_minute=60,
+                desired_concurrency=1,
+                max_concurrency=min(2, len(users)),
             ),
             http_client=http_client,
             request_manager=request_manager,
-            ignore_http_error_status_codes=ignore_http_error_status_codes
+            ignore_http_error_status_codes=ignore_http_error_status_codes,
         )
 
     @crawler.pre_navigation_hook

@@ -93,7 +93,7 @@ async def get_crawler(
         is_browser,
         debug,
         follow_redirects,
-        ignore_http_error_status_codes
+        ignore_http_error_status_codes,
     )
     requests = create_requests(work, before_start_urls, users, handler_name)
     await crawler.add_requests(requests=requests)
