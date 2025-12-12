@@ -17,6 +17,7 @@ HTMLFile = str
 JSONFile = dict
 Data = list[BaseModel]
 DataWithRunId = list[tuple[str, BaseModel]]
+DataWithRunIdInfo = list[tuple[str, RunInfo, BaseModel]]
 
 RawFile = HTMLFile | JSONFile
 RawData = list[RawFile]
@@ -109,7 +110,7 @@ class Parser:
         async for file in self.load_input_files(self.bronze.files_path, run_infos):
             yield file
 
-    async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunId:
+    async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunIdInfo:
         results = []
 
         # Inspect handler once
@@ -129,12 +130,12 @@ class Parser:
                 if name in allowed_param_names
             }
             parsed_data = self.handler(raw_file, **kwargs)
-            results.extend([(run_id, pdt) for pdt in parsed_data])
+            results.extend([(run_id, run_info, pdt) for pdt in parsed_data])
 
         return results
 
     async def save(
-        self, data: DataWithRunId, batch_size: int = 10000, outer_index: int = 0
+        self, data: DataWithRunIdInfo, batch_size: int = 10000, outer_index: int = 0
     ) -> int:
         if not data:
             return outer_index
@@ -144,9 +145,11 @@ class Parser:
             start_index = i * batch_size
             end_index = start_index + batch_size
             batch_data = data[start_index:end_index]
-            models = [item for _, item in batch_data]
+            models = [item for _, _, item in batch_data]
             df = models_to_dataframe(models)
-            df["source_run_id"] = [source_run_id for source_run_id, _ in batch_data]
+            df["source_run_id"] = [source_run_id for source_run_id, _, _ in batch_data]
+            df["scraped_at"] = [run_info.requested_at for _, run_info, _ in batch_data]
+            df["parsed_at"] = [self.run_info.requested_at for _, _, _ in batch_data]
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
             file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"
