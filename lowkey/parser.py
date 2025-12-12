@@ -12,6 +12,7 @@ import json
 from pydantic import BaseModel
 from datetime import date
 from .conversion import models_to_dataframe
+from tqdm import tqdm
 
 HTMLFile = str
 JSONFile = dict
@@ -110,7 +111,7 @@ class Parser:
         async for file in self.load_input_files(self.bronze.files_path, run_infos):
             yield file
 
-    async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunIdInfo:
+    async def parse(self, raw_data: RawDataWithRunIdAndInfo, progress=False) -> DataWithRunIdInfo:
         results = []
 
         # Inspect handler once
@@ -118,7 +119,8 @@ class Parser:
         type_hints = get_type_hints(self.handler)
         allowed_param_names = sig.parameters.keys()
         # Iterate and call handler with the same kwargs
-        for run_id, run_info, raw_file, name in raw_data:
+        data_to_parse = tqdm(raw_data, desc="Parsing files", unit="file") if progress else raw_data
+        for run_id, run_info, raw_file, name in data_to_parse:
             # Prepare kwargs only if handler expects a RunInfo
             context = {
                 "run_info": run_info,
@@ -198,7 +200,7 @@ class Parser:
             parsed_data = []
             async for raw_d in raw_data:
                 empty = False
-                parser_d = await parser.parse([raw_d])
+                parser_d = await parser.parse([raw_d], progress=full_run)
                 parsed_data.extend(parser_d)
 
             if empty:
