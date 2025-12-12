@@ -150,8 +150,8 @@ class Parser:
             models = [item for _, _, item in batch_data]
             df = models_to_dataframe(models)
             df["source_run_id"] = [source_run_id for source_run_id, _, _ in batch_data]
-            df["scraped_at"] = [datetime.fromisoformat(run_info.requested_at) for _, run_info, _ in batch_data]
-            df["parsed_at"] = [datetime.fromisoformat(self.run_info.requested_at) for _, _, _ in batch_data]
+            df["scraped_at"] = [datetime.fromisoformat(run_info.requested_at).replace(tzinfo=None) for _, run_info, _ in batch_data]
+            df["parsed_at"] = [datetime.fromisoformat(self.run_info.requested_at).replace(tzinfo=None) for _, _, _ in batch_data]
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
             file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"
