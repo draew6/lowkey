@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from datetime import date
 from .conversion import models_to_dataframe
 from tqdm import tqdm
+from datetime import datetime
 
 HTMLFile = str
 JSONFile = dict
@@ -111,7 +112,7 @@ class Parser:
         async for file in self.load_input_files(self.bronze.files_path, run_infos):
             yield file
 
-    async def parse(self, raw_data: RawDataWithRunIdAndInfo, progress=False) -> DataWithRunIdInfo:
+    async def parse(self, raw_data: RawDataWithRunIdAndInfo) -> DataWithRunIdInfo:
         results = []
 
         # Inspect handler once
@@ -119,8 +120,7 @@ class Parser:
         type_hints = get_type_hints(self.handler)
         allowed_param_names = sig.parameters.keys()
         # Iterate and call handler with the same kwargs
-        data_to_parse = tqdm(raw_data, desc="Parsing files", unit="file") if progress else raw_data
-        for run_id, run_info, raw_file, name in data_to_parse:
+        for run_id, run_info, raw_file, name in raw_data:
             # Prepare kwargs only if handler expects a RunInfo
             context = {
                 "run_info": run_info,
@@ -150,8 +150,8 @@ class Parser:
             models = [item for _, _, item in batch_data]
             df = models_to_dataframe(models)
             df["source_run_id"] = [source_run_id for source_run_id, _, _ in batch_data]
-            df["scraped_at"] = [run_info.requested_at for _, run_info, _ in batch_data]
-            df["parsed_at"] = [self.run_info.requested_at for _, _, _ in batch_data]
+            df["scraped_at"] = [datetime.fromisoformat(run_info.requested_at) for _, run_info, _ in batch_data]
+            df["parsed_at"] = [datetime.fromisoformat(self.run_info.requested_at) for _, _, _ in batch_data]
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
             file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"
@@ -184,10 +184,12 @@ class Parser:
         )
         await parser.silver.mark_run_as_started()
         await parser.silver.create_run_info(run_info)
+        pbar = None
         if full_run:
             scraper_name = BronzeLayer._create_scraper_path(project_name, scraper_name)
             run_infos = await parser._get_run_info_files(scraper_name)
             raw_data = parser.load_input_files(scraper_name, run_infos)
+            pbar = tqdm(total=len(run_infos), desc="Parsing files", unit="file")
         elif date_filter:
             scraper_name = f"{BronzeLayer._create_scraper_path(project_name, scraper_name)}/{date_filter.strftime('%Y/%m/%d')}"
             run_infos = await parser._get_run_info_files(scraper_name)
@@ -199,8 +201,10 @@ class Parser:
             empty = True
             parsed_data = []
             async for raw_d in raw_data:
+                if pbar:
+                    pbar.update(1)
                 empty = False
-                parser_d = await parser.parse([raw_d], progress=full_run)
+                parser_d = await parser.parse([raw_d])
                 parsed_data.extend(parser_d)
 
             if empty:
