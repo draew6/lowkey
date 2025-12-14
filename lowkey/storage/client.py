@@ -208,9 +208,9 @@ class DuckLakeStorage(MinioStorage):
 
         return con
 
-    def _query[T](self, query: str, result_type: T = dict) -> list[T]:
+    def _query[T](self, query: str, result_type: T = dict, parameters: list = None) -> list[T]:
         con = self.connection
-        cur = con.execute(query)
+        cur = con.execute(query, parameters)
         columns = [desc[0] for desc in cur.description]
         rows = cur.fetchall()
         result = [result_type(**dict(zip(columns, row))) for row in rows]
