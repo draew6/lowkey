@@ -2,7 +2,7 @@ import glob
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import AsyncIterator
+from typing import AsyncIterator, Type
 import duckdb
 from miniopy_async import Minio
 import io
@@ -208,7 +208,7 @@ class DuckLakeStorage(MinioStorage):
 
         return con
 
-    def _query[T](self, query: str, result_type: T = dict, parameters: list = None) -> list[T]:
+    def _query[T](self, query: str, result_type: Type[T] = dict, parameters: list = None) -> list[T]:
         con = self.connection
         cur = con.execute(query, parameters)
         columns = [desc[0] for desc in cur.description]
