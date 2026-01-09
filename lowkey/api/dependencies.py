@@ -34,7 +34,7 @@ ScraperSettings = Annotated[ScraperSettings, Depends(get_scraper_settings)]
 ParserSettings = Annotated[ParserSettings, Depends(get_parser_settings)]
 
 
-def get_ducklake(parser_settings: ParserSettings):
+async def get_ducklake(parser_settings: ParserSettings):
     client = DuckLakeStorage(
         parser_settings.minio_endpoint,
         parser_settings.minio_access_key,
@@ -46,7 +46,10 @@ def get_ducklake(parser_settings: ParserSettings):
         parser_settings.duck_pg_dbname,
         str(parser_settings.duck_pg_port),
     )
-    return client
+    try:
+        yield client
+    finally:
+        await client.close()
 
 
 Lake = Annotated[DuckLakeStorage, Depends(get_ducklake)]
