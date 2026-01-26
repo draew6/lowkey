@@ -89,14 +89,14 @@ class Catalog:
             if "No files found" in str(e):
                 parquet_file_names = []
             else:
-                raise e
+                raise
         try:
             json_file_names = [file["key"] for file in query(sql_query_json)]
         except IOException as e:
             if "No files found" in str(e):
                 json_file_names = []
             else:
-                raise e
+                raise
 
         names = []
         for name in list(set(parquet_file_names + json_file_names)):
