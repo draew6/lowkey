@@ -85,12 +85,19 @@ class Catalog:
         """
         try:
             parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
-        except IOException:
-            parquet_file_names = []
+        except IOException as e:
+            if "No files found" in str(e):
+                parquet_file_names = []
+            else:
+                raise e
         try:
             json_file_names = [file["key"] for file in query(sql_query_json)]
-        except IOException:
-            json_file_names = []
+        except IOException as e:
+            if "No files found" in str(e):
+                json_file_names = []
+            else:
+                raise e
+
         names = []
         for name in list(set(parquet_file_names + json_file_names)):
             rel = name[len(prefix) :].lstrip("/")
