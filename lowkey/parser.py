@@ -3,6 +3,7 @@ import math
 from io import BytesIO
 from typing import Callable, get_type_hints, AsyncIterator
 from . import generate_run_id
+from .errors import NoInputFilesError
 from .storage import RunInfo
 from .storage.layer import SilverLayer, BronzeLayer
 from .storage.client import Storage
@@ -208,7 +209,7 @@ class Parser:
                 parsed_data.extend(parser_d)
 
             if empty:
-                raise ValueError("No input files found to parse.")
+                raise NoInputFilesError("No input files found to parse.")
 
             await parser.save(parsed_data)
             await parser.silver.mark_run_as_completed()
