@@ -120,13 +120,13 @@ class MinioStorage(Storage):
 
         for start in range(0, len(file_names), BATCH_SIZE):
             batch = file_names[start : start + BATCH_SIZE]
-            tasks = [get_one_file(name) for name in batch]
-            # Yield as soon as each task finishes (fastest-first)
-            for coro in asyncio.as_completed(tasks):
-                file = await coro
-                yield file
+            async with asyncio.TaskGroup() as tg:
+                tasks = [tg.create_task(get_one_file(name)) for name in batch]
+            # All tasks complete here, yield results
+            for task in tasks:
+                yield task.result()
 
-            # Wait 1s between batches if more remain
+                    # Wait 1s between batches if more remain
             if start + BATCH_SIZE < len(file_names):
                 await asyncio.sleep(1)
 
