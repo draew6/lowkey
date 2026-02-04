@@ -4,11 +4,12 @@ import json
 from io import BytesIO
 from typing import Literal
 import pandas as pd
-from duckdb import IOException
+from duckdb import IOException, HTTPException
 from .client import Storage
 from datetime import datetime, UTC
 from ..utils import generate_run_id
 from ..duck import query
+import asyncio
 
 
 class Catalog:
@@ -85,12 +86,18 @@ class Catalog:
         """
         try:
             parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
+        except HTTPException as e:
+            await asyncio.sleep(10)
+            parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
         except IOException as e:
             if "No files found" in str(e):
                 parquet_file_names = []
             else:
                 raise
         try:
+            json_file_names = [file["key"] for file in query(sql_query_json)]
+        except HTTPException as e:
+            await asyncio.sleep(10)
             json_file_names = [file["key"] for file in query(sql_query_json)]
         except IOException as e:
             if "No files found" in str(e):
