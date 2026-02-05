@@ -216,6 +216,15 @@ class DuckLakeStorage(MinioStorage):
         result = [result_type(**dict(zip(columns, row))) for row in rows]
         return result
 
+    def _query_stream(self, query: str, batch_size: int = 1000):
+        con = self.connection
+        cur = con.execute(query)
+        columns = [desc[0] for desc in cur.description]
+
+        while batch := cur.fetchmany(batch_size):
+            for row in batch:
+                yield dict(zip(columns, row))
+
     def add_file(self, key: str):
         assert self.table is not None, "Table name must be specified to add files."
         sql = f"CALL ducklake_add_data_files('lake', '{self.table}', '{self.prefix}{key}');"
