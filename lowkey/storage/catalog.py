@@ -86,9 +86,15 @@ class Catalog:
         """
         try:
             parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
-        except HTTPException as e:
-            await asyncio.sleep(10)
-            parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
+        except HTTPException:
+            await asyncio.sleep(15)
+            try:
+                parquet_file_names = [file["key"] for file in query(sql_query_parquet)]
+            except IOException as e:
+                if "No files found" in str(e):
+                    parquet_file_names = []
+                else:
+                    raise
         except IOException as e:
             if "No files found" in str(e):
                 parquet_file_names = []
@@ -96,9 +102,15 @@ class Catalog:
                 raise
         try:
             json_file_names = [file["key"] for file in query(sql_query_json)]
-        except HTTPException as e:
-            await asyncio.sleep(10)
-            json_file_names = [file["key"] for file in query(sql_query_json)]
+        except HTTPException:
+            await asyncio.sleep(15)
+            try:
+                json_file_names = [file["key"] for file in query(sql_query_json)]
+            except IOException as e:
+                if "No files found" in str(e):
+                    json_file_names = []
+                else:
+                    raise
         except IOException as e:
             if "No files found" in str(e):
                 json_file_names = []
