@@ -151,6 +151,7 @@ class Catalog:
                 f"{self.catalog_date_path(datetime.now(UTC))}/parquet/{parquet_file_name}",
                 buf.getvalue(),
             )
+            await asyncio.sleep(10)
             delete_tasks = [
                 self.output_storage.delete(file_name) for file_name in file_names_batch
             ]
