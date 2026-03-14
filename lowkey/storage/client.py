@@ -198,7 +198,8 @@ class DuckLakeStorage(MinioStorage):
       ENDPOINT '{minio_endpoint}',
       URL_STYLE 'path',
       USE_SSL false,
-      REGION 'us-east-1'
+      REGION 'us-east-1',
+      SCOPE 's3://{minio_bucket_name}/'
     );
     """)
         con.execute(f"""
