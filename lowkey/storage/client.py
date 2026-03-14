@@ -202,7 +202,7 @@ class DuckLakeStorage(MinioStorage):
     );
     """)
         con.execute(f"""
-        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname} port={duck_pg_port}' AS lake (DATA_PATH 's3://{minio_bucket_name}/lake/');
+        ATTACH 'ducklake:postgres:host={duck_pg_host} user={duck_pg_user} password={duck_pg_password} dbname={duck_pg_dbname} port={duck_pg_port}' AS lake (DATA_PATH 's3://{minio_bucket_name}/lake/', AUTOMATIC_MIGRATION TRUE);
         USE lake;
         """)
 
