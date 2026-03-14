@@ -11,6 +11,7 @@ def query[T](query: str, result: T = dict) -> list[T]:
     SET s3_endpoint = '{settings.minio_endpoint}';
     SET s3_access_key_id = '{settings.minio_access_key}';
     SET s3_secret_access_key = '{settings.minio_secret_key}';
+    SET s3_region = 'us-east-1';
     SET s3_url_style = 'path';  -- important for MinIO
     SET s3_use_ssl = 'false';
     """)
