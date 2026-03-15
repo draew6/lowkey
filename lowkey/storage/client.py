@@ -197,7 +197,7 @@ class DuckLakeStorage(MinioStorage):
       SECRET '{minio_secret_key}',
       ENDPOINT '{minio_endpoint}',
       URL_STYLE 'path',
-      USE_SSL false,
+      USE_SSL true,
       REGION 'us-east-1',
       SCOPE 's3://{minio_bucket_name}/'
     );
