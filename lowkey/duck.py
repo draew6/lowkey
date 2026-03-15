@@ -13,7 +13,7 @@ def query[T](query: str, result: T = dict) -> list[T]:
     SET s3_secret_access_key = '{settings.minio_secret_key}';
     SET s3_region = 'us-east-1';
     SET s3_url_style = 'path';  -- important for MinIO
-    SET s3_use_ssl = 'false';
+    SET s3_use_ssl = 'true';
     """)
     cur = con.execute(query)
     columns = [desc[0] for desc in cur.description]
