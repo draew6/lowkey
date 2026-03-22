@@ -7,7 +7,6 @@ from .errors import NoInputFilesError
 from .storage import RunInfo
 from .storage.layer import SilverLayer, BronzeLayer
 from .storage.client import Storage
-from .storage.catalog import Catalog
 import zstandard as zstd
 import json
 from pydantic import BaseModel
@@ -39,17 +38,12 @@ class Parser:
         output_storage: Storage,
         run_info: RunInfo,
     ):
-        self.bronze_catalog = Catalog(
-            input_storage, output_storage, project_name, scraper_name, "bronze"
-        )
-
         self.bronze = BronzeLayer(
             input_storage,
             project_name,
             scraper_name,
             run_id,
             identifier,
-            self.bronze_catalog,
         )
         self.silver = SilverLayer(output_storage, project_name, scraper_name, run_id)
         self.handler = handler
@@ -67,7 +61,7 @@ class Parser:
         raise ValueError("Unsupported handler input type")
 
     async def _get_run_info_files(self, key: str) -> dict[str, RunInfo]:
-        run_info_file_names = await self.bronze_catalog.list_files(key, "*run.json")
+        run_info_file_names = await self.bronze.storage.list_files(key, "*run.json")
         run_info_files = [
             file async for file in self.bronze.storage.load_files(run_info_file_names)
         ]
@@ -83,7 +77,7 @@ class Parser:
         self, key: str, run_infos: dict[str, RunInfo]
     ) -> AsyncIterator[tuple[str, RunInfo, RawFile, str]]:
         input_type = self.detect_file_type()
-        file_names = await self.bronze_catalog.list_files(key, "*.zst")
+        file_names = await self.bronze.storage.list_files(key, "*.zst")
         files = self.bronze.storage.load_files(file_names)
         dctx = zstd.ZstdDecompressor()
         async for file in files:
@@ -151,8 +145,14 @@ class Parser:
             models = [item for _, _, item in batch_data]
             df = models_to_dataframe(models)
             df["source_run_id"] = [source_run_id for source_run_id, _, _ in batch_data]
-            df["scraped_at"] = [datetime.fromisoformat(run_info.requested_at).replace(tzinfo=None) for _, run_info, _ in batch_data]
-            df["parsed_at"] = [datetime.fromisoformat(self.run_info.requested_at).replace(tzinfo=None) for _, _, _ in batch_data]
+            df["scraped_at"] = [
+                datetime.fromisoformat(run_info.requested_at).replace(tzinfo=None)
+                for _, run_info, _ in batch_data
+            ]
+            df["parsed_at"] = [
+                datetime.fromisoformat(self.run_info.requested_at).replace(tzinfo=None)
+                for _, _, _ in batch_data
+            ]
             buf = BytesIO()
             df.to_parquet(buf, index=False, engine="pyarrow")  # type: ignore[arg-type]
             file_name = f"{generate_run_id()}-{i + outer_index:06d}.parquet"

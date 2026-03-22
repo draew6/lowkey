@@ -4,7 +4,6 @@ from ..models.user import User
 from .client import Storage
 from .info import ScraperInfo, RunInfo
 from .layer import BronzeLayer, SilverLayer
-from .catalog import Catalog
 
 
 class ScraperStorage:
@@ -17,9 +16,8 @@ class ScraperStorage:
         identifier: str,
         api_client: APIClient,
     ) -> None:
-        bronze_catalog = Catalog(storage, storage, project_name, scraper_name, "bronze")
         self.bronze = BronzeLayer(
-            storage, project_name, scraper_name, run_id, identifier, bronze_catalog
+            storage, project_name, scraper_name, run_id, identifier
         )
         self.silver = SilverLayer(storage, project_name, scraper_name, run_id)
         self.api_client = api_client
