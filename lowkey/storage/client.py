@@ -155,19 +155,26 @@ class DuckLakeStorage(MinioStorage):
             minio_endpoint, minio_access_key, minio_secret_key, minio_bucket_name
         )
 
-        self.connection = self._load_duck_db(
-            minio_endpoint,
-            minio_access_key,
-            minio_secret_key,
-            minio_bucket_name,
-            duck_pg_host,
-            duck_pg_user,
-            duck_pg_password,
-            duck_pg_dbname,
-            duck_pg_port,
-        )
+        self._duck_db_params = {
+            "minio_endpoint": minio_endpoint,
+            "minio_access_key": minio_access_key,
+            "minio_secret_key": minio_secret_key,
+            "minio_bucket_name": minio_bucket_name,
+            "duck_pg_host": duck_pg_host,
+            "duck_pg_user": duck_pg_user,
+            "duck_pg_password": duck_pg_password,
+            "duck_pg_dbname": duck_pg_dbname,
+            "duck_pg_port": duck_pg_port,
+        }
+        self._connection = None
         self.table = table
         self.prefix = f"s3://{minio_bucket_name}/"
+
+    @property
+    def connection(self):
+        if self._connection is None:
+            self._connection = self._load_duck_db(**self._duck_db_params)
+        return self._connection
 
     @staticmethod
     def _load_duck_db(
@@ -262,4 +269,6 @@ class DuckLakeStorage(MinioStorage):
 
     async def close(self) -> None:
         await super().close()
-        self.connection.close()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
