@@ -3,7 +3,7 @@ import math
 from io import BytesIO
 from typing import Callable, get_type_hints, AsyncIterator
 from . import generate_run_id
-from .errors import NoInputFilesError
+from .errors import NoInputFilesError, ParsingError
 from .storage import RunInfo
 from .storage.layer import SilverLayer, BronzeLayer
 from .storage.client import Storage
@@ -129,7 +129,7 @@ class Parser:
             try:
                 parsed_data = self.handler(raw_file, **kwargs)
             except Exception as e:
-                raise type(e)(f"Error parsing file '{name}': {e}") from e
+                raise ParsingError(f"Error parsing file '{name}': {e}") from e
             results.extend([(run_id, run_info, pdt) for pdt in parsed_data])
 
         return results
