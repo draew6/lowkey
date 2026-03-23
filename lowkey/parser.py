@@ -126,7 +126,10 @@ class Parser:
                 for name, value in context.items()
                 if name in allowed_param_names
             }
-            parsed_data = self.handler(raw_file, **kwargs)
+            try:
+                parsed_data = self.handler(raw_file, **kwargs)
+            except Exception as e:
+                raise type(e)(f"Error parsing file '{name}': {e}") from e
             results.extend([(run_id, run_info, pdt) for pdt in parsed_data])
 
         return results
