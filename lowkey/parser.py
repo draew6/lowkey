@@ -204,6 +204,7 @@ class Parser:
         try:
             empty = True
             parsed_data = []
+            outer_index = 0
             async for raw_d in raw_data:
                 if pbar:
                     pbar.update(1)
@@ -211,10 +212,15 @@ class Parser:
                 parser_d = await parser.parse([raw_d])
                 parsed_data.extend(parser_d)
 
+                if len(parsed_data) >= 10000:
+                    outer_index = await parser.save(parsed_data, outer_index=outer_index)
+                    parsed_data = []
+
             if empty:
                 raise NoInputFilesError("No input files found to parse.")
 
-            await parser.save(parsed_data)
+            if parsed_data:
+                await parser.save(parsed_data, outer_index=outer_index)
             await parser.silver.mark_run_as_completed()
 
         except Exception as e:
