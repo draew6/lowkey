@@ -67,7 +67,7 @@ class Parser:
         ]
         run_infos = {
             file.name.split("run=")[1].split("/")[0]: RunInfo(
-                **json.loads(file.content.decode("utf-8"))
+                **json.loads(file.content.decode("utf-8", errors="replace"))
             )
             for file in run_info_files
         }
@@ -87,14 +87,14 @@ class Parser:
                 yield (
                     run_id,
                     run_infos[run_id],
-                    decompressed_file.decode("utf-8"),
+                    decompressed_file.decode("utf-8", errors="replace"),
                     file.name,
                 )
             elif input_type is JSONFile:
                 yield (
                     run_id,
                     run_infos[run_id],
-                    json.loads(decompressed_file.decode("utf-8")),
+                    json.loads(decompressed_file.decode("utf-8", errors="replace")),
                     file.name,
                 )
             else:
